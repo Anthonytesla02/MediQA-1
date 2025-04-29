@@ -1,0 +1,356 @@
+{% extends "layout.html" %}
+
+{% block head_content %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/gamification.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h2>Dashboard</h2>
+        <button id="refresh-stats" class="btn btn-outline">
+            <i data-feather="refresh-cw"></i> Refresh
+        </button>
+    </div>
+    
+    <!-- Dashboard Tabs Navigation -->
+    <div class="dashboard-tabs">
+        <button class="tab-button active" data-tab="overview">
+            <i data-feather="home"></i> Overview
+        </button>
+        <button class="tab-button" data-tab="performance">
+            <i data-feather="activity"></i> Performance
+        </button>
+        <button class="tab-button" data-tab="achievements">
+            <i data-feather="award"></i> Achievements
+        </button>
+        <button class="tab-button" data-tab="leaderboard">
+            <i data-feather="users"></i> Leaderboard
+        </button>
+    </div>
+    
+    <!-- Tab Content -->
+    <div class="tab-content-container">
+        <!-- Overview Tab -->
+        <div id="overview-tab" class="tab-content active">
+            <div class="stats-container">
+                <div id="stats-grid" class="stats-grid">
+                    <!-- Stats cards will be loaded here -->
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                </div>
+            </div>
+            
+            <div class="card summary-card">
+                <div class="card-header">
+                    <h3>Quick Summary</h3>
+                </div>
+                <div class="card-body" id="summary-content">
+                    <!-- Summary will be loaded here -->
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Performance Tab -->
+        <div id="performance-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Progress Chart</h3>
+                </div>
+                <div class="card-body">
+                    <div id="performance-chart" class="chart-container">
+                        <!-- Chart will be rendered here -->
+                        <div class="skeleton" style="height: 250px;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-details">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Detailed Stats</h3>
+                    </div>
+                    <div class="card-body" id="stats-details">
+                        <!-- Detailed stats will be loaded here -->
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Achievements Tab -->
+        <div id="achievements-tab" class="tab-content">
+            <div id="achievements-container">
+                <!-- Achievements will be loaded here -->
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+            </div>
+        </div>
+        
+        <!-- Leaderboard Tab -->
+        <div id="leaderboard-tab" class="tab-content">
+            <div id="leaderboard-preview">
+                <!-- Leaderboard will be loaded here -->
+                <div class="skeleton skeleton-card"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-container {
+        padding: 1rem 0;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .dashboard-header h2 {
+        color: var(--primary-color);
+        margin: 0;
+    }
+    
+    /* Tab Navigation */
+    .dashboard-tabs {
+        display: flex;
+        overflow-x: auto;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        scrollbar-width: none; /* Hide scrollbar for Firefox */
+    }
+    
+    .dashboard-tabs::-webkit-scrollbar {
+        display: none; /* Hide scrollbar for Chrome/Safari/Opera */
+    }
+    
+    .tab-button {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1.25rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        color: var(--text-color);
+        border-bottom: 3px solid transparent;
+        white-space: nowrap;
+    }
+    
+    .tab-button i {
+        margin-right: 0.5rem;
+    }
+    
+    .tab-button.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+    
+    .tab-button:hover:not(.active) {
+        color: var(--primary-color);
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+    
+    /* Tab Content */
+    .tab-content-container {
+        position: relative;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stat-card {
+        background-color: var(--card-background);
+        border-radius: var(--border-radius);
+        padding: 1.25rem;
+        text-align: center;
+        box-shadow: var(--shadow);
+        transition: transform var(--transition-speed);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-3px);
+    }
+    
+    .stat-icon {
+        color: var(--primary-color);
+        font-size: 1.5rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+        color: var(--text-light);
+        font-size: 0.9rem;
+    }
+    
+    /* Summary Card */
+    .summary-card {
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Chart */
+    .chart-container {
+        height: 250px;
+        width: 100%;
+        position: relative;
+    }
+    
+    /* Stats Details Grid */
+    .stats-details-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+        margin-top: 0.5rem;
+    }
+    
+    .detail-item {
+        background: rgba(0,0,0,0.02);
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+    }
+    
+    .detail-label {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        margin-bottom: 0.25rem;
+    }
+    
+    .detail-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+    
+    /* Achievements Section */
+    .achievements-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .achievement-item {
+        background-color: var(--card-background);
+        border-radius: var(--border-radius);
+        padding: 1rem;
+        text-align: center;
+        box-shadow: var(--shadow);
+        transition: transform var(--transition-speed);
+    }
+    
+    .achievement-item:hover {
+        transform: translateY(-3px);
+    }
+    
+    .achievement-icon {
+        color: var(--primary-color);
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .achievement-name {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .achievement-description {
+        font-size: 0.75rem;
+        color: var(--text-light);
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: var(--text-light);
+    }
+    
+    .empty-icon {
+        color: var(--primary-color);
+        opacity: 0.5;
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+    
+    .empty-hint {
+        font-size: 0.85rem;
+        font-style: italic;
+        margin-top: 0.5rem;
+    }
+    
+    /* Login Prompt */
+    .login-prompt {
+        text-align: center;
+        padding: 2rem;
+    }
+    
+    @media (min-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        
+        .achievements-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Tab switching functionality
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Get the tab to show
+                const tabToShow = button.dataset.tab;
+                
+                // Update active button
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Show the corresponding tab content
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === `${tabToShow}-tab`) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

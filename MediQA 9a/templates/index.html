@@ -1,0 +1,94 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="landing-container">
+    <div class="app-logo">
+        <i data-feather="activity" style="width: 48px; height: 48px;"></i>
+    </div>
+    <h1 class="app-title">MediQA</h1>
+    <p class="app-tagline">AI-Powered Medical Diagnostic Assistant</p>
+    
+    <div class="feature-grid">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i data-feather="message-circle"></i>
+            </div>
+            <div class="feature-title">AI Chat</div>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i data-feather="activity"></i>
+            </div>
+            <div class="feature-title">Case Sim</div>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i data-feather="layers"></i>
+            </div>
+            <div class="feature-title">Flashcards</div>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i data-feather="target"></i>
+            </div>
+            <div class="feature-title">Challenges</div>
+        </div>
+    </div>
+    
+    <div class="ghana-guide">
+        <p>Powered by Ghana STG</p>
+    </div>
+    
+    <div class="auth-buttons">
+        <button id="show-login-btn" class="btn btn-primary">Login</button>
+        <button id="show-signup-btn" class="btn btn-outline">Sign Up</button>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('Setting up landing page authentication buttons');
+        
+        // Initialize buttons with new auth module
+        const auth = window.authModule;
+        if (!auth) {
+            console.error('Auth module not found');
+            return;
+        }
+        
+        // Login button on the landing page
+        const showLoginBtn = document.getElementById('show-login-btn');
+        if (showLoginBtn) {
+            showLoginBtn.addEventListener('click', () => {
+                auth.showLoginModal();
+            });
+        }
+        
+        // Signup button on the landing page
+        const showSignupBtn = document.getElementById('show-signup-btn');
+        if (showSignupBtn) {
+            showSignupBtn.addEventListener('click', () => {
+                auth.showSignupModal();
+            });
+        }
+        
+        // Check if user is already logged in
+        if (auth.isLoggedIn()) {
+            // Use the validateSession function which handles validation and cleanup
+            auth.validateSession().then(isValid => {
+                if (isValid) {
+                    // Only redirect if the session is valid
+                    window.location.href = '/dashboard';
+                } else {
+                    console.log('Session expired or invalid, user stays on landing page');
+                }
+            }).catch(error => {
+                console.error('Session validation error:', error);
+            });
+        }
+    });
+</script>
+{% endblock %}

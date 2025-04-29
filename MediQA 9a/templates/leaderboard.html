@@ -1,0 +1,246 @@
+{% extends "layout.html" %}
+
+{% block head_content %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadLeaderboard();
+    });
+    
+    async function loadLeaderboard() {
+        const leaderboardBody = document.getElementById('leaderboard-body');
+        
+        if (!leaderboardBody) return;
+        
+        // Show loading state
+        leaderboardBody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center">
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text"></div>
+                </td>
+            </tr>
+        `;
+        
+        try {
+            const response = await fetch(API_ENDPOINTS.LEADERBOARD);
+            const data = await response.json();
+            
+            if (data.error) {
+                leaderboardBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center">
+                            <div class="alert alert-danger">${data.error}</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Render leaderboard
+            renderLeaderboard(data.leaderboard);
+        } catch (error) {
+            console.error('Load leaderboard error:', error);
+            leaderboardBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center">
+                        <div class="alert alert-danger">Failed to load leaderboard data.</div>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+    
+    function renderLeaderboard(leaderboardData) {
+        const leaderboardBody = document.getElementById('leaderboard-body');
+        leaderboardBody.innerHTML = '';
+        
+        if (!leaderboardData || leaderboardData.length === 0) {
+            leaderboardBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center">No leaderboard data available.</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        leaderboardData.forEach((user, index) => {
+            const row = document.createElement('tr');
+            
+            // Add rank class for top 3
+            const rankClass = index < 3 ? `rank-${index + 1}` : '';
+            
+            // Highlight current user
+            const isCurrentUser = isLoggedIn() && getUserId() === user.id;
+            if (isCurrentUser) {
+                row.className = 'current-user';
+            }
+            
+            row.innerHTML = `
+                <td class="rank ${rankClass}">#${index + 1}</td>
+                <td class="username">
+                    ${user.username}
+                    ${isCurrentUser ? '<span class="badge badge-primary">You</span>' : ''}
+                </td>
+                <td class="points-cell">${user.points}</td>
+                <td class="streak-cell">
+                    <span class="streak-icon"><i data-feather="activity"></i></span>
+                    ${user.streak}
+                </td>
+            `;
+            
+            leaderboardBody.appendChild(row);
+        });
+        
+        // Initialize Feather icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    }
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="leaderboard-container">
+    <div class="leaderboard-header">
+        <h2>Leaderboard</h2>
+        <p>See how you stack up against other learners</p>
+    </div>
+    
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3>Top Performers</h3>
+            <button onclick="loadLeaderboard()" class="btn btn-sm btn-outline">
+                <i data-feather="refresh-cw"></i> Refresh
+            </button>
+        </div>
+        <div class="card-body">
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>User</th>
+                        <th>Points</th>
+                        <th>Streak</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <!-- Leaderboard data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .leaderboard-container {
+        padding: 1rem 0;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .leaderboard-header {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .leaderboard-header h2 {
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+    
+    .leaderboard-header p {
+        color: var(--text-light);
+    }
+    
+    .leaderboard-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .leaderboard-table th,
+    .leaderboard-table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .leaderboard-table th {
+        font-weight: 600;
+        color: var(--text-color);
+    }
+    
+    .leaderboard-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .rank {
+        font-weight: 700;
+    }
+    
+    .rank-1 {
+        color: gold;
+    }
+    
+    .rank-2 {
+        color: silver;
+    }
+    
+    .rank-3 {
+        color: #cd7f32;  /* bronze */
+    }
+    
+    .username {
+        font-weight: 500;
+    }
+    
+    .points-cell {
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+    
+    .streak-cell {
+        display: flex;
+        align-items: center;
+    }
+    
+    .streak-icon {
+        color: var(--warning-color);
+        margin-right: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    tr.current-user {
+        background-color: rgba(52, 152, 219, 0.1);
+    }
+    
+    .d-flex {
+        display: flex;
+    }
+    
+    .justify-content-between {
+        justify-content: space-between;
+    }
+    
+    .align-items-center {
+        align-items: center;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .skeleton-text {
+        height: 1rem;
+        margin-bottom: 0.5rem;
+        background-color: #f0f0f0;
+        border-radius: 4px;
+    }
+    
+    .text-center {
+        text-align: center;
+    }
+</style>
+{% endblock %}

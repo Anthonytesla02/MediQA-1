@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>MediQA</title>
+    
+    <!-- Styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Feather Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    
+    <!-- Chart.js for statistics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Base scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    
+    <!-- Page-specific styles and scripts -->
+    {% block head_content %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/">MediQA</a>
+        </div>
+        <div id="user-info">
+            <!-- User info will be populated by JavaScript -->
+        </div>
+    </nav>
+    
+    <!-- Main content -->
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Tab bar navigation (only visible when logged in) -->
+    <div class="tab-bar" id="nav-tabs" style="display: none;">
+        <a class="tab-item" data-target="/chat">
+            <div class="tab-icon"><i data-feather="message-circle"></i></div>
+        </a>
+        <a class="tab-item" data-target="/simulation">
+            <div class="tab-icon"><i data-feather="activity"></i></div>
+        </a>
+        <a class="tab-item" data-target="/flashcards">
+            <div class="tab-icon"><i data-feather="layers"></i></div>
+        </a>
+        <a class="tab-item" data-target="/dashboard">
+            <div class="tab-icon"><i data-feather="bar-chart-2"></i></div>
+        </a>
+    </div>
+    
+    <!-- Login/Signup Modal -->
+    <div id="auth-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="auth-tabs">
+                <div class="auth-tab active" data-tab="login">Login</div>
+                <div class="auth-tab" data-tab="signup">Signup</div>
+            </div>
+            <div id="login-form" class="auth-form active">
+                <div class="form-group">
+                    <label for="login-email"><i data-feather="mail"></i></label>
+                    <input type="email" id="login-email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password"><i data-feather="lock"></i></label>
+                    <input type="password" id="login-password" placeholder="Password" required>
+                </div>
+                <button id="login-btn" class="btn btn-primary btn-block">Login</button>
+                <div class="auth-form-message" id="login-message"></div>
+            </div>
+            <div id="signup-form" class="auth-form">
+                <div class="form-group">
+                    <label for="signup-username"><i data-feather="user"></i></label>
+                    <input type="text" id="signup-username" placeholder="Username" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-email"><i data-feather="mail"></i></label>
+                    <input type="email" id="signup-email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password"><i data-feather="lock"></i></label>
+                    <input type="password" id="signup-password" placeholder="Password" minlength="6" required>
+                </div>
+                <button id="signup-btn" class="btn btn-primary btn-block">Sign Up</button>
+                <div class="auth-form-message" id="signup-message"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Initialize components -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Layout: DOM content loaded');
+            // Initialize Feather icons
+            feather.replace();
+            
+            // Initialize components
+            initComponents();
+            
+            // Initialize auth modal with the new auth module
+            if (window.authModule) {
+                window.authModule.initAuthModal();
+            } else {
+                console.error('Auth module not found!');
+            }
+            
+            // Show tabs only when logged in
+            const isLoggedIn = window.authModule && window.authModule.isLoggedIn();
+            const navTabs = document.getElementById('nav-tabs');
+            if (navTabs) {
+                navTabs.style.display = isLoggedIn ? 'flex' : 'none';
+            }
+            
+            // Check if user is already logged in on page load
+            if (isLoggedIn) {
+                // Validate session with server
+                window.authModule.validateSession().then(isValid => {
+                    if (isValid) {
+                        console.log('User session is valid');
+                        initUserSession();
+                    } else {
+                        console.log('User session is invalid or expired');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

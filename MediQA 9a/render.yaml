@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: mediqa
+    env: python
+    buildCommand: pip install -r deployment_requirements.txt
+    startCommand: gunicorn main:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mediqa_db
+          property: connectionString
+      - key: MISTRAL_API_KEY
+        sync: false
+
+databases:
+  - name: mediqa_db
+    databaseName: mediqa
+    user: mediqa_user
+    plan: free
+
+# Note: Environment variables are also hardcoded in config.py

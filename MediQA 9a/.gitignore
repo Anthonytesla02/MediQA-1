@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# SQLite Database Files
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+.venv
+env/
+venv/
+ENV/
+
+# VSCode
+.vscode/
+
+# Logs
+*.log
+
+# Instance folder
+instance/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Replit specific
+.replit
+.cache/
+.breakpoints
