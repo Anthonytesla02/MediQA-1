@@ -9,9 +9,14 @@
 <div class="dashboard-container">
     <div class="dashboard-header">
         <h2>Dashboard</h2>
-        <button id="refresh-stats" class="btn btn-outline">
-            <i data-feather="refresh-cw"></i> Refresh
-        </button>
+        <div class="dashboard-actions">
+            <button id="refresh-stats" class="btn btn-outline">
+                <i data-feather="refresh-cw"></i> Refresh
+            </button>
+            <button id="logout-btn" class="btn btn-outline btn-logout">
+                <i data-feather="log-out"></i> Logout
+            </button>
+        </div>
     </div>
     
     <!-- Dashboard Tabs Navigation -->
@@ -122,6 +127,22 @@
     .dashboard-header h2 {
         color: var(--primary-color);
         margin: 0;
+    }
+    
+    .dashboard-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .btn-logout {
+        background-color: rgba(231, 76, 60, 0.1);
+        border-color: #e74c3c;
+        color: #e74c3c;
+    }
+    
+    .btn-logout:hover {
+        background-color: #e74c3c;
+        color: white;
     }
     
     /* Tab Navigation */
@@ -351,6 +372,16 @@
                 });
             });
         });
+        
+        // Add event listener for logout button
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                if (window.authModule && window.authModule.logout) {
+                    window.authModule.logout();
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

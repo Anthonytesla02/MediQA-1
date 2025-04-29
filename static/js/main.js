@@ -67,22 +67,23 @@ function initUserSession() {
       try {
         const userData = JSON.parse(userStr);
         
-        // Update user info in UI
+        // Update user info in UI - with profile icon and username only
         userInfo.innerHTML = `
-          <span>${userData.username}</span>
-          <span class="badge badge-primary">${userData.points} pts</span>
-          <span class="badge badge-secondary">🔥 ${userData.streak}</span>
-          <button id="logout-btn" class="btn btn-outline btn-sm">Logout</button>
+          <div class="user-profile">
+            <i data-feather="user" class="profile-icon"></i>
+            <span>${userData.username}</span>
+          </div>
         `;
         
-        // Add event listener for logout button
-        const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-          logoutBtn.addEventListener('click', () => {
-            if (window.authModule) {
-              window.authModule.logout();
-            }
-          });
+        // Render feather icons
+        if (window.feather) {
+          feather.replace();
+        }
+        
+        // Show tab bar navigation for logged in users
+        const navTabs = document.getElementById('nav-tabs');
+        if (navTabs) {
+          navTabs.style.display = 'flex';
         }
       } catch (e) {
         console.error('Error parsing user data:', e);

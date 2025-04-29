@@ -205,6 +205,31 @@ a:hover {
   color: var(--primary-color);
 }
 
+#user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.8rem;
+  background-color: rgba(52, 152, 219, 0.1);
+  border-radius: 20px;
+}
+
+.profile-icon {
+  color: var(--primary-color);
+  width: 16px;
+  height: 16px;
+}
+
+#user-info span {
+  font-weight: 500;
+}
+
 .navbar-nav {
   display: flex;
   list-style: none;

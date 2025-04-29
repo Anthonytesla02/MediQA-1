@@ -80,21 +80,59 @@ def get_diagnosis_response(user_query):
     # Generate context from document
     context = generate_context_for_query(user_query)
     
-    # Create messages for AI with context
+    # Check if it's a treatment or diagnosis query to customize prompt
+    query_lower = user_query.lower()
+    
+    # Check for treatment-related queries
+    treatment_phrases = ['treatment for', 'treatment of', 'how to treat', 'medicine for', 
+                        'drug for', 'therapy for', 'exact treatment', 'management of']
+    
+    # Check for diagnosis-related queries
+    diagnosis_phrases = ['diagnosis of', 'symptoms of', 'signs of', 'diagnosing', 
+                        'diagnostic criteria', 'what is', 'what diagnosis']
+    
+    is_treatment_query = any(phrase in query_lower for phrase in treatment_phrases)
+    is_diagnosis_query = any(phrase in query_lower for phrase in diagnosis_phrases)
+    
+    # Base system prompt - then customize based on query type
+    system_content = f"""You are a precise medical assistant that references the Standard Treatment Guidelines.
+    Base your responses ONLY on the following medical reference information:
+    
+    {context}
+    
+    IMPORTANT INSTRUCTIONS:
+    1. Be extremely concise - only provide relevant information.
+    2. Focus only on factual information from the reference material.
+    3. Format key points with bullet points when appropriate.
+    4. Do not include any personal opinions or information not found in the reference.
+    5. If the reference doesn't contain relevant information, simply state "The guidelines do not contain specific information about this query."
+    """
+    
+    # Add specific instructions for treatment queries
+    if is_treatment_query:
+        system_content += """
+        Since this is a treatment query, your response should:
+        - Begin with the standard/recommended treatment
+        - List medications with dosages if specified in the reference
+        - Note any alternative treatments or stepwise approaches
+        - Include only treatment information, not general disease background
+        - Format as a brief, structured treatment plan
+        """
+    
+    # Add specific instructions for diagnosis queries
+    elif is_diagnosis_query:
+        system_content += """
+        Since this is a diagnosis query, your response should:
+        - Begin with a clear definition or diagnostic criteria
+        - List key symptoms and signs in bullet point format
+        - Include any diagnostic tests mentioned in the reference
+        - Focus on identification criteria only, not treatment options
+        - Keep explanations minimal and fact-based
+        """
+    
+    # Create messages for AI with context and query-specific guidance
     messages = [
-        {"role": "system", "content": f"""You are a concise medical assistant that uses the Standard Treatment Guidelines to provide accurate information.
-        Base your responses on the following medical guidelines context:
-        
-        {context}
-        
-        IMPORTANT INSTRUCTIONS:
-        1. Be direct and concise - keep responses brief but complete.
-        2. First state relevant facts from the knowledge base without explaining them.
-        3. Add a brief explanation only after providing the facts.
-        4. Avoid excessive language, lengthy introductions, or verbose explanations.
-        5. If you can't provide a confident response, clearly state this in one sentence.
-        
-        Your answers should be straightforward, factual, and to-the-point."""},
+        {"role": "system", "content": system_content},
         {"role": "user", "content": user_query}
     ]
     
