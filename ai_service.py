@@ -1,6 +1,7 @@
 import os
 import logging
 import json
+import random
 import requests
 from config import MISTRAL_API_KEY
 from rag_engine import generate_context_for_query
@@ -141,17 +142,116 @@ def get_diagnosis_response(user_query):
     return response
 
 def generate_case_simulation():
-    """Generate a simulated patient case with questions."""
-    # Create a simple but complete medical case
-    case_data = create_medical_case()
+    """Generate a simulated patient case with sequential questions."""
+    # Get a random topic from the curated list
+    curated_topics = [
+        "Diarrhoea", "Rotavirus Disease and Diarrhoea", "Constipation", "Peptic Ulcer Disease",
+        "Gastro-oesophageal Reflux Disease", "Haemorrhoids", "Vomiting", "Anaemia", "Measles",
+        "Pertussis", "Common cold", "Pneumonia", "Headache", "Boils", "Impetigo", "Buruli ulcer",
+        "Yaws", "Superficial Fungal Skin infections", "Pityriasis Versicolor", "Herpes Simplex Infections",
+        "Herpes Zoster Infections", "Chicken pox", "Large Chronic Ulcers", "Pruritus", "Urticaria",
+        "Reactive Erythema and Bullous Reaction", "Acne Vulgaris", "Eczema", "Intertrigo", "Diabetes Mellitus",
+        "Diabetic Ketoacidosis", "Diabetes in Pregnancy", "Treatment-Induced Hypoglycemia", "Dyslipidaemia",
+        "Goitre", "Hypothyroidism", "Hyperthyroidism", "Overweight and Obesity", "Dysmenorrhoea",
+        "Abortion", "Abnormal Vaginal Bleeding", "Abnormal Vaginal Discharge", "Acute Lower Abdominal Pain",
+        "Menopause", "Erectile Dysfunction", "Urinary Tract Infection", "Sexually Transmitted Infections in Adults",
+        "Fever", "Tuberculosis", "Typhoid fever", "Malaria", "Uncomplicated Malaria", "Severe Malaria",
+        "Malaria in Pregnancy", "Worm Infestation", "Xerophthalmia", "Foreign body in the eye",
+        "Neonatal conjunctivitis", "Red eye", "Stridor", "Acute Epiglottitis", "Retropharyngeal Abscess",
+        "Pharyngitis and Tonsillitis", "Acute Sinusitis", "Acute otitis Media", "Chronic Otitis Media",
+        "Epistaxis", "Dental Caries", "Oral Candidiasis", "Acute Necrotizing Ulcerative Gingivitis",
+        "Acute Bacterial Sialoadenitis", "Chronic Periodontal Infections", "Mouth Ulcers", "Odontogenic Infections",
+        "Osteoarthritis", "Rheumatoid arthritis", "Juvenile Idiopathic Arthritis", "Back pain", "Gout",
+        "Dislocations", "Open Fractures", "Cellulitis", "Burns", "Wounds", "Bites and Stings",
+        "Shock", "Acute Allergic Reaction"
+    ]
+    selected_topic = random.choice(curated_topics)
+    logger.info(f"Selected topic for case simulation: {selected_topic}")
     
-    # Generate multiple-choice questions
-    case_data['multiple_choice_questions'] = generate_multiple_choice_questions(case_data['diagnosis'])
+    # Get relevant document content for the selected topic
+    from document_processor import search_document
+    from rag_engine import generate_context_for_query
+    topic_info = generate_context_for_query(selected_topic)
     
-    # Generate free-text questions
-    case_data['free_text_questions'] = generate_free_text_questions(case_data['diagnosis'])
+    # Create a medical case based on the selected topic
+    case_data = create_medical_case_from_topic(selected_topic, topic_info)
     
     return case_data
+
+def create_medical_case_from_topic(topic, topic_info):
+    """Create a medical case based on a specific topic and information."""
+    # Generate a differential diagnosis for the case (another condition with similar symptoms)
+    differential_topics = [
+        "Common cold", "Pneumonia", "Influenza", "Bronchitis", "Sinusitis", "Pharyngitis",
+        "Gastroenteritis", "Food poisoning", "Irritable Bowel Syndrome", "Peptic Ulcer Disease",
+        "Migraine", "Tension headache", "Cluster headache", "Allergic rhinitis", "Asthma"
+    ]
+    differential_diagnosis = random.choice([d for d in differential_topics if d != topic])
+    
+    # Generate the case via AI with specific instructions for the required format
+    messages = [
+        {"role": "system", "content": """You are a medical case generator for healthcare student training.
+        Create a realistic but concise medical case about the specified condition. 
+        Focus on the essential details needed for diagnosis and keep the case straightforward.
+        The format must follow this structure exactly:
+        1. A short patient profile (age, gender, occupation if relevant)
+        2. Presenting complaint (chief symptoms reported by patient)
+        3. Patient history (relevant medical history, include only: blood pressure, blood sugar, allergies, current medications)
+        4. Diagnosis (the correct medical diagnosis)
+        5. Treatment (brief appropriate treatment plan)
+        6. Differential reasoning (why this diagnosis instead of the given alternative)
+        
+        Format the output as a JSON object with these exact keys: 
+        patient_info, presenting_complaint, patient_history, diagnosis, treatment, differential_reasoning."""}, 
+        {"role": "user", "content": f"Create a case about {topic}. The differential diagnosis to discuss is {differential_diagnosis}. Use relevant medical information about {topic} symptoms, diagnosis and treatment. Keep it concise but medically accurate."}
+    ]
+    
+    try:
+        response = generate_ai_response(messages, temperature=0.7)
+        # Try to parse the JSON from the response
+        import json
+        
+        # Clean up the response in case it contains markdown formatting
+        if '```json' in response and '```' in response:
+            response = response.split('```json')[1].split('```')[0].strip()
+        elif '```' in response:
+            response = response.split('```')[1].split('```')[0].strip()
+        
+        case_data = json.loads(response)
+        
+        # Ensure all required fields are present
+        required_fields = ['patient_info', 'presenting_complaint', 'patient_history', 'diagnosis', 'treatment', 'differential_reasoning']
+        missing_fields = [field for field in required_fields if field not in case_data]
+        
+        if missing_fields:
+            logger.error(f"AI-generated case missing fields: {missing_fields}")
+            # Create a fallback case
+            case_data = create_fallback_case_from_topic(topic, differential_diagnosis)
+        
+        # Add the topics for reference
+        case_data['topic'] = topic
+        case_data['differential_topic'] = differential_diagnosis
+        
+        return case_data
+    except Exception as e:
+        logger.error(f"Error creating case from topic: {e}")
+        return create_fallback_case_from_topic(topic, differential_diagnosis)
+
+def create_fallback_case_from_topic(topic, differential_diagnosis):
+    """Create a fallback case when AI generation fails."""
+    # Basic template for a fallback case
+    case = {
+        'patient_info': f"35-year-old patient with symptoms of {topic}",
+        'presenting_complaint': f"Main symptoms consistent with {topic}", 
+        'patient_history': "Blood pressure: Normal, Blood sugar: Normal, Allergies: None, Medications: None",
+        'diagnosis': topic,
+        'treatment': f"Standard treatment for {topic}",
+        'differential_reasoning': f"The symptoms are more consistent with {topic} than {differential_diagnosis} because of the typical presentation.",
+        'topic': topic,
+        'differential_topic': differential_diagnosis
+    }
+    
+    return case
 
 def create_medical_case():
     """Create a realistic medical case with patient info and diagnosis."""

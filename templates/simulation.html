@@ -21,25 +21,12 @@
         <!-- Case details will be loaded here -->
     </div>
     
-    <div id="case-questions" class="case-questions" style="display: none;">
-        <!-- Questions will be loaded here -->
-        <div class="multiple-choice-questions">
-            <h3>Multiple Choice Questions</h3>
-            <div id="mc-questions-container"></div>
-        </div>
-        
-        <div class="free-text-questions">
-            <h3>Free Text Questions</h3>
-            <div id="ft-questions-container"></div>
-        </div>
-        
-        <div class="submit-section">
-            <button id="submit-answers-btn" class="btn btn-primary">Submit All Answers</button>
-        </div>
+    <div id="question-container" class="question-container">
+        <!-- Sequential questions will be displayed here one at a time -->
     </div>
     
-    <div id="diagnosis-result" class="diagnosis-result" style="display: none;">
-        <!-- Diagnosis result will be shown here -->
+    <div id="case-results" class="case-results" style="display: none;">
+        <!-- Results will be shown here after all questions are answered -->
     </div>
 </div>
 
@@ -158,16 +145,76 @@
     }
     
     /* Questions styles */
-    .case-questions {
+    /* Question container and cards */
+    .question-container {
+        position: relative;
+        min-height: 250px;
         margin-bottom: 1.5rem;
     }
     
-    .multiple-choice-questions, .free-text-questions {
+    .question-card {
+        position: absolute;
+        width: 100%;
         background-color: var(--card-background);
         border-radius: var(--border-radius);
         padding: 1.5rem;
-        margin-bottom: 1.5rem;
         box-shadow: var(--shadow);
+        transition: transform 0.5s, opacity 0.5s;
+        z-index: 1;
+    }
+    
+    .question-card.active {
+        transform: translateX(0);
+        opacity: 1;
+        z-index: 2;
+    }
+    
+    .question-card.prev {
+        transform: translateX(-120%);
+        opacity: 0;
+        z-index: 0;
+    }
+    
+    .question-card.next {
+        transform: translateX(120%);
+        opacity: 0;
+        z-index: 0;
+    }
+    
+    .question-card h3 {
+        color: var(--primary-color);
+        margin-top: 0;
+        margin-bottom: 1rem;
+    }
+    
+    .question-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .question-textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+        min-height: 120px;
+        resize: vertical;
+        margin-bottom: 1rem;
+    }
+    
+    .question-input:focus, .question-textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+    
+    .question-submit {
+        display: block;
+        margin-left: auto;
     }
     
     .multiple-choice-questions h3, .free-text-questions h3 {
@@ -383,6 +430,90 @@
     
     .key-concept.matched {
         background-color: rgba(46, 204, 113, 0.2);
+    }
+    
+    /* Slide animations */
+    @keyframes slideInFromRight {
+        0% {
+            transform: translateX(120%);
+            opacity: 0;
+        }
+        100% {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutToLeft {
+        0% {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        100% {
+            transform: translateX(-120%);
+            opacity: 0;
+        }
+    }
+    
+    .slide-in {
+        animation: slideInFromRight 0.5s forwards;
+    }
+    
+    .slide-out {
+        animation: slideOutToLeft 0.5s forwards;
+    }
+    
+    /* Case results styling */
+    .case-results {
+        background-color: var(--card-background);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--shadow);
+    }
+    
+    .results-section {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .results-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    
+    .results-section h3 {
+        color: var(--primary-color);
+        margin-top: 0;
+        margin-bottom: 1rem;
+    }
+    
+    .answer-comparison {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .answer-comparison {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .user-answer-box, .correct-answer-box {
+        padding: 1rem;
+        border-radius: var(--border-radius);
+    }
+    
+    .user-answer-box {
+        background-color: var(--highlight-color);
+    }
+    
+    .correct-answer-box {
+        background-color: #d4edda;
     }
 </style>
 {% endblock %}

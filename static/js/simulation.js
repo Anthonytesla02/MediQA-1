@@ -1,24 +1,24 @@
-// Case simulation
+// Case simulation with sequential question cards
+const API_ENDPOINTS = {
+  SIMULATION_NEW: '/api/simulation/new',
+  SIMULATION_SUBMIT: '/api/simulation/submit'
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   const simulationContainer = document.querySelector('.simulation-container');
   const newCaseButton = document.getElementById('new-case-button');
   const caseContent = document.getElementById('case-content');
-  const caseQuestions = document.getElementById('case-questions');
-  const mcQuestionsContainer = document.getElementById('mc-questions-container');
-  const ftQuestionsContainer = document.getElementById('ft-questions-container');
-  const submitAnswersBtn = document.getElementById('submit-answers-btn');
-  const diagnosisResult = document.getElementById('diagnosis-result');
+  const questionContainer = document.getElementById('question-container');
+  const caseResults = document.getElementById('case-results');
   
+  // State variables
   let currentCase = null;
+  let currentQuestionIndex = 0;
+  let userAnswers = {};
   
   // Add event listener to new case button
   if (newCaseButton) {
     newCaseButton.addEventListener('click', loadNewCase);
-  }
-  
-  // Add event listener to submit answers button
-  if (submitAnswersBtn) {
-    submitAnswersBtn.addEventListener('click', submitAnswers);
   }
   
   // Load new case on page load

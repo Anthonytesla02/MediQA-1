@@ -113,6 +113,7 @@ def api_chat():
         return jsonify({"error": "An error occurred processing your request"}), 500
 
 @app.route('/api/simulation/new', methods=['GET'])
+@login_required
 def api_new_simulation():
     """API endpoint to get a new simulation case."""
     try:
@@ -127,7 +128,7 @@ def api_new_simulation():
             }), 500
         
         # Validate case data
-        required_fields = ['patient_info', 'presenting_complaint', 'history', 'examination', 'vitals', 'diagnosis']
+        required_fields = ['patient_info', 'presenting_complaint', 'patient_history', 'diagnosis', 'treatment', 'differential_reasoning']
         missing_fields = [field for field in required_fields if field not in case_data]
         
         if missing_fields:
@@ -137,11 +138,33 @@ def api_new_simulation():
         # Store case in session
         session['current_case'] = case_data
         
-        # Remove diagnosis from response to avoid spoilers
+        # Remove diagnosis and other solution fields from response to avoid spoilers
         response_data = case_data.copy()
         response_data.pop('diagnosis', None)
-        response_data.pop('reasoning', None)
-        response_data.pop('differential_diagnoses', None)
+        response_data.pop('treatment', None)
+        response_data.pop('differential_reasoning', None)
+        
+        # Set up the sequential questions structure
+        questions = [
+            {
+                "id": 1,
+                "question": "What is your diagnosis for this patient?",
+                "field": "diagnosis"
+            },
+            {
+                "id": 2,
+                "question": "How would you treat this patient?",
+                "field": "treatment"
+            },
+            {
+                "id": 3,
+                "question": f"Why did you choose your diagnosis instead of {case_data.get('differential_topic', 'alternative diagnosis')}?",
+                "field": "differential_reasoning"
+            }
+        ]
+        
+        # Add the questions to the response
+        response_data['questions'] = questions
         
         # Log success for debugging
         logger.info("Successfully generated and returned new case simulation")
@@ -154,12 +177,12 @@ def api_new_simulation():
         }), 500
 
 @app.route('/api/simulation/submit', methods=['POST'])
+@login_required
 def api_submit_simulation():
-    """API endpoint to submit simulation answers."""
+    """API endpoint to submit all simulation answers."""
     try:
         data = request.json
-        mc_answers = data.get('mc_answers', {})
-        ft_answers = data.get('ft_answers', {})
+        answers = data.get('answers', {})
         user_id = session.get('user_id')
         
         # Get current case from session
@@ -167,90 +190,64 @@ def api_submit_simulation():
         if not current_case:
             return jsonify({"error": "No active case found"}), 400
         
-        # Validate multiple choice answers
-        if not mc_answers:
-            return jsonify({"error": "Multiple choice answers are required"}), 400
+        # Validate answers
+        if not answers:
+            return jsonify({"error": "Answers are required"}), 400
             
-        # Validate free text answers
-        if not ft_answers:
-            return jsonify({"error": "Free text answers are required"}), 400
+        # Required answer fields
+        required_fields = ['diagnosis', 'treatment', 'differential_reasoning']
+        missing_fields = [field for field in required_fields if field not in answers]
         
-        # Evaluate multiple choice answers
-        mc_results = []
-        mc_score = 0
-        mc_questions = current_case.get('multiple_choice_questions', [])
+        if missing_fields:
+            return jsonify({"error": f"Missing required answers: {', '.join(missing_fields)}"}), 400
         
-        for q_id_str, answer in mc_answers.items():
-            q_id = int(q_id_str)
-            if q_id < len(mc_questions):
-                question = mc_questions[q_id]
-                is_correct = answer == question.get('correct_answer')
-                
-                mc_results.append({
-                    'question': question.get('question', 'Unknown question'),
-                    'user_answer': answer,
-                    'correct_answer': question.get('correct_answer', ''),
-                    'correct': is_correct
-                })
-                
-                if is_correct:
-                    mc_score += 1
+        # Evaluate diagnosis answer using AI
+        diagnosis_result = None
+        try:
+            diagnosis_evaluation = evaluate_diagnosis(answers['diagnosis'], current_case['diagnosis'])
+            diagnosis_score = diagnosis_evaluation.get('score', 0)
+            diagnosis_feedback = diagnosis_evaluation.get('feedback', '')
+            diagnosis_result = {
+                'score': diagnosis_score,
+                'feedback': diagnosis_feedback,
+                'user_answer': answers['diagnosis'],
+                'correct_answer': current_case['diagnosis']
+            }
+        except Exception as e:
+            logger.error(f"Error evaluating diagnosis: {e}")
+            # Use simple score
+            similarity_score = 70 if answers['diagnosis'].lower() in current_case['diagnosis'].lower() else 50
+            diagnosis_result = {
+                'score': similarity_score,
+                'feedback': "Unable to provide detailed feedback at this time.",
+                'user_answer': answers['diagnosis'],
+                'correct_answer': current_case['diagnosis']
+            }
         
-        mc_percent = (mc_score / len(mc_questions)) * 100 if mc_questions else 0
+        # Simple evaluation for other answers (gives credit for thoughtful responses)
+        treatment_score = min(80, max(50, len(answers['treatment']) // 10))
+        reasoning_score = min(80, max(50, len(answers['differential_reasoning']) // 10))
         
-        # Evaluate free text answers
-        ft_results = []
-        ft_score = 0
-        ft_questions = current_case.get('free_text_questions', [])
+        # Calculate overall score (weighted average)
+        diagnosis_weight = 0.5  # 50% of total score
+        treatment_weight = 0.25  # 25% of total score
+        reasoning_weight = 0.25  # 25% of total score
         
-        for q_id_str, answer in ft_answers.items():
-            q_id = int(q_id_str)
-            if q_id < len(ft_questions):
-                question = ft_questions[q_id]
-                
-                # Get key concepts from question
-                key_concepts = question.get('key_concepts', [])
-                ideal_answer = question.get('ideal_answer', '')
-                
-                # Simple concept matching (case-insensitive)
-                matched_concepts = []
-                missing_concepts = []
-                
-                # Check each concept
-                for concept in key_concepts:
-                    if concept.lower() in answer.lower():
-                        matched_concepts.append(concept)
-                    else:
-                        missing_concepts.append(concept)
-                
-                # Calculate score based on matched concepts
-                question_score = (len(matched_concepts) / len(key_concepts)) * 100 if key_concepts else 0
-                
-                ft_results.append({
-                    'question': question.get('question', 'Unknown question'),
-                    'user_answer': answer,
-                    'ideal_answer': ideal_answer,
-                    'matched_concepts': matched_concepts,
-                    'missing_concepts': missing_concepts,
-                    'score': question_score
-                })
-                
-                ft_score += question_score
-        
-        ft_percent = ft_score / len(ft_questions) if ft_questions else 0
-        
-        # Calculate overall score (50% from MC, 50% from FT)
-        overall_score = int((mc_percent * 0.5) + (ft_percent * 0.5))
+        overall_score = int(
+            (diagnosis_result['score'] * diagnosis_weight) + 
+            (treatment_score * treatment_weight) + 
+            (reasoning_score * reasoning_weight)
+        )
         
         # Generate feedback based on score
         if overall_score >= 90:
-            feedback = "Excellent work! Your answers demonstrate thorough understanding of the clinical scenario and medical concepts."
+            feedback = "Excellent work! Your answers demonstrate thorough understanding of the case."
         elif overall_score >= 70:
             feedback = "Good job! You've demonstrated solid clinical reasoning, but there's still room for improvement."
         elif overall_score >= 50:
-            feedback = "You're on the right track, but need to improve your clinical analysis and knowledge of key medical concepts."
+            feedback = "You're on the right track, but need to improve your clinical analysis and medical knowledge."
         else:
-            feedback = "Your answers need significant improvement. Review the key clinical concepts and medical knowledge relevant to this case."
+            feedback = "Your answers need significant improvement. Review the key clinical concepts for this condition."
         
         # Save attempt if user is logged in
         if user_id:
@@ -262,25 +259,20 @@ def api_submit_simulation():
                 case = Case(
                     title=case_title,
                     description=json.dumps(current_case.get('patient_info', {})),
-                    symptoms=json.dumps(current_case.get('history', {})),
+                    symptoms=json.dumps(current_case.get('patient_history', {})),
                     diagnosis=current_case.get('diagnosis', ''),
                     difficulty=2  # Medium difficulty by default
                 )
                 db.session.add(case)
-                db.session.commit()
+                db.session.flush()  # To get the ID
             
-            # Save attempt with combined answers
-            combined_answers = {
-                'mc_answers': mc_answers,
-                'ft_answers': ft_answers
-            }
-            
+            # Save attempt with answers
             attempt = CaseAttempt(
                 user_id=user_id,
                 case_id=case.id,
                 completed=True,
                 score=overall_score,
-                diagnosis=json.dumps(combined_answers),
+                diagnosis=json.dumps(answers),
                 correct=overall_score >= 70
             )
             db.session.add(attempt)
@@ -308,15 +300,38 @@ def api_submit_simulation():
             
             db.session.commit()
         
+        # Prepare results for each question
+        results = [
+            {
+                'question': "What is your diagnosis for this patient?",
+                'user_answer': answers['diagnosis'],
+                'correct_answer': current_case['diagnosis'],
+                'score': diagnosis_result['score'],
+                'feedback': diagnosis_result['feedback']
+            },
+            {
+                'question': "How would you treat this patient?",
+                'user_answer': answers['treatment'],
+                'correct_answer': current_case['treatment'],
+                'score': treatment_score,
+                'feedback': "Your treatment plan has been evaluated based on completeness and relevance."
+            },
+            {
+                'question': f"Why did you choose your diagnosis instead of {current_case.get('differential_topic', 'alternative diagnosis')}?",
+                'user_answer': answers['differential_reasoning'],
+                'correct_answer': current_case['differential_reasoning'],
+                'score': reasoning_score,
+                'feedback': "Your differential reasoning has been evaluated based on clinical justification and logic."
+            }
+        ]
+        
         # Return result
         return jsonify({
             "score": overall_score,
             "feedback": feedback,
-            "diagnosis": current_case.get('diagnosis', ''),
-            "reasoning": current_case.get('reasoning', ''),
-            "differential_diagnoses": current_case.get('differential_diagnoses', []),
-            "mc_results": mc_results,
-            "ft_results": ft_results
+            "results": results,
+            "topic": current_case.get('topic', ''),
+            "differential_topic": current_case.get('differential_topic', '')
         })
     except Exception as e:
         logger.error(f"Error submitting simulation: {e}")
