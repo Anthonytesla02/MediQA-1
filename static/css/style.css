@@ -23,6 +23,10 @@
   box-sizing: border-box;
 }
 
+button:focus, input:focus, textarea:focus, a:focus {
+  outline: none !important;
+}
+
 body {
   font-family: 'Inter', 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   background-color: var(--background-color);
@@ -120,6 +124,7 @@ a:hover {
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  outline: none !important;
 }
 
 .btn:after {
@@ -212,12 +217,19 @@ a:hover {
 }
 
 .user-profile {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.8rem;
   background-color: rgba(52, 152, 219, 0.1);
   border-radius: 20px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.user-profile:hover {
+  background-color: rgba(52, 152, 219, 0.2);
 }
 
 .profile-icon {
@@ -228,6 +240,59 @@ a:hover {
 
 #user-info span {
   font-weight: 500;
+}
+
+/* User profile dropdown */
+.profile-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  min-width: 180px;
+  background-color: var(--card-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  z-index: 1000;
+  display: none;
+}
+
+.profile-dropdown.show {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: var(--text-color);
+  transition: background-color 0.2s ease;
+  text-decoration: none;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dropdown-item i {
+  color: var(--primary-color);
+  width: 16px;
+  height: 16px;
+}
+
+.dropdown-item.danger {
+  color: var(--error-color);
+}
+
+.dropdown-item.danger i {
+  color: var(--error-color);
+}
+
+.dropdown-divider {
+  height: 1px;
+  margin: 0.25rem 0;
+  background-color: var(--border-color);
 }
 
 .navbar-nav {
@@ -386,6 +451,8 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 50px; /* Ensure minimum width */
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 /* Simulation */

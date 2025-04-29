@@ -16,10 +16,12 @@
     </div>
     
     <form id="chat-form" class="chat-input">
-        <input type="text" id="message-input" placeholder="Type your symptoms or question..." autocomplete="off">
-        <button type="submit" id="send-button" class="btn btn-primary">
-            <i data-feather="send"></i>
-        </button>
+        <div class="input-wrapper">
+            <input type="text" id="message-input" placeholder="Type your symptoms or question..." autocomplete="off">
+            <button type="submit" id="send-button" class="btn btn-primary">
+                <i data-feather="send"></i>
+            </button>
+        </div>
     </form>
 </div>
 
@@ -129,18 +131,27 @@
         padding: 1rem;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
         position: sticky;
         bottom: 0;
         background-color: var(--background-color);
         border-top: 1px solid var(--border-color);
         margin-top: auto;
         z-index: 10;
+        width: 100%;
+    }
+    
+    .input-wrapper {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        position: relative;
     }
     
     .chat-input input {
         flex: 1;
+        width: calc(100% - 10px); /* Full width minus some space */
         padding: 0.75rem 1rem;
+        padding-right: 60px; /* Space for the button */
         border: 2px solid #eee;
         border-radius: 24px;
         font-size: 1rem;
@@ -160,6 +171,12 @@
         align-items: center;
         justify-content: center;
         border-radius: 50%;
+        min-width: 50px; /* Prevent button from shrinking */
+        flex-shrink: 0; /* Prevent button from shrinking */
+        position: absolute; /* Position in the right side of wrapper */
+        right: 0;
+        z-index: 5; /* Higher than surrounding elements */
+        margin-right: 5px;
     }
     
     .chat-input button:disabled {

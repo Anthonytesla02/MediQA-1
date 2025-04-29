@@ -13,9 +13,6 @@
             <button id="refresh-stats" class="btn btn-outline">
                 <i data-feather="refresh-cw"></i> Refresh
             </button>
-            <button id="logout-btn" class="btn btn-outline btn-logout">
-                <i data-feather="log-out"></i> Logout
-            </button>
         </div>
     </div>
     
@@ -204,6 +201,12 @@
         grid-template-columns: repeat(2, 1fr);
         gap: 1rem;
         margin-bottom: 1.5rem;
+    }
+    
+    @media (min-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
     }
     
     .stat-card {

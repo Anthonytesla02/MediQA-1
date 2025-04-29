@@ -67,11 +67,27 @@ function initUserSession() {
       try {
         const userData = JSON.parse(userStr);
         
-        // Update user info in UI - with profile icon and username only
+        // Update user info in UI - with profile icon, username and dropdown
         userInfo.innerHTML = `
-          <div class="user-profile">
+          <div class="user-profile" id="profile-trigger">
             <i data-feather="user" class="profile-icon"></i>
             <span>${userData.username}</span>
+            <i data-feather="chevron-down" class="profile-icon" style="width: 14px; height: 14px;"></i>
+          </div>
+          <div class="profile-dropdown" id="profile-dropdown">
+            <a href="/dashboard" class="dropdown-item">
+              <i data-feather="user"></i>
+              Account
+            </a>
+            <a href="#" class="dropdown-item">
+              <i data-feather="settings"></i>
+              Settings
+            </a>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item danger" id="logout-dropdown-btn">
+              <i data-feather="log-out"></i>
+              Logout
+            </a>
           </div>
         `;
         
@@ -79,6 +95,9 @@ function initUserSession() {
         if (window.feather) {
           feather.replace();
         }
+        
+        // Initialize profile dropdown
+        initProfileDropdown();
         
         // Show tab bar navigation for logged in users
         const navTabs = document.getElementById('nav-tabs');
@@ -95,6 +114,41 @@ function initUserSession() {
     } else {
       // User is not logged in, show login button
       showLoginButton();
+    }
+  }
+}
+
+// Initialize profile dropdown functionality
+function initProfileDropdown() {
+  const profileTrigger = document.getElementById('profile-trigger');
+  const profileDropdown = document.getElementById('profile-dropdown');
+  const logoutBtn = document.getElementById('logout-dropdown-btn');
+  
+  if (profileTrigger && profileDropdown) {
+    // Toggle dropdown on profile click
+    profileTrigger.addEventListener('click', function(e) {
+      e.stopPropagation();
+      profileDropdown.classList.toggle('show');
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function() {
+      profileDropdown.classList.remove('show');
+    });
+    
+    // Prevent dropdown from closing when clicking inside
+    profileDropdown.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+    
+    // Logout functionality
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (window.authModule) {
+          window.authModule.logout();
+        }
+      });
     }
   }
 }
