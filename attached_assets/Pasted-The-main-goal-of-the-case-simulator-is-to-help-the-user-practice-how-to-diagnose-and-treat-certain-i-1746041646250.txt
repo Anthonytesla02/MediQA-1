@@ -1,0 +1,69 @@
+The main goal of the case simulator is to help the user practice how to diagnose and treat certain illnesses by simulating real-world scenarios.
+
+Design:
+There should be a new case button at the top of its page. 
+Below that, there should be a horizontal card called Presenting Complaint. 
+Below the Presenting Complaint, there should be 2 input fields with questions. In order not to make the page long, the input fields should be displayed one by one when each is submitted.
+
+Functionality:
+The AI should always use the knowledge base to generate case studies and it should always generate them in real-world scenarios. It should only generate case studies related to the topics within the triple backticks below.
+
+That means, it should randomly pick a topic from the list below, search for its content from the knowledge base (example: causes, signs, symptoms and treatment) and then use that content to generate a case study. Now in order to make the case studies easy to understand and concise, I've added a few case studies within the triple quotation marks below. 
+
+The AI shouldn't just generate a direct copy of those case study examples, instead, it should frame the questions in that format or use them as inspiration. 
+
+Now after generating the case study, it should display it on the Presenting Complaint card.
+The questions for the 2 input fields are: 
+- What's your Diagnosis?
+- How would you treat it?
+
+If I submit all two answers, the AI should match my answers to the correct answer which they've received or found inside the knowledge base. Because I'll likely provide the answers in my own words, they may not directly match the answer in the knowledge base. So it should extract the relevant point and answer from what I provide and compare that to the answer in the knowledge base. 
+
+Now note that, some illnesses in the knowledge base have more than one treatment, as such if I provide only one, it should still mark me as correct. Here's an example where providing just one treatment is correct despite not being the same word for word. Most times, alternative treatments are separated by "Or":
+
+Provided answer:
+'''
+Ciprofloxacin, oral, 500 mg 12 hourly for 7 days for females or 10-14 days for males.
+'''
+
+Correct answer:
+'''
+Ciprofloxacin, oral,
+Adults
+500 mg 12 hourly for 7 days (female); 10-14 days (male)
+Children
+15-20 mg/kg 12 hourly; (max. of 750 mg daily in two divided doses)
+Or
+Cefuroxime, oral,
+Adults
+250-500 mg 12 hourly for 5-7 days (female); 10-14 days (male)
+Children
+12-18 years; 250 mg 12 hourly for 5-7 days
+2-12 years; 15 mg/ kg 12 hourly (max. 250 mg) for 5-7 days
+3 months-2 years; 10 mg/kg 12 hourly (max. 125 mg) for 5-7 days
+'''
+
+Age related treatment would matter if the AI includes the patient age in the case study. Else, only the adult treatment is necessary or accepted. Meaning that, if the AI specifies the age, i would provide treatment for only that age and it should be strict.
+But if it doesn't specify the age, I can only submit the treatment for "Adults".
+Also, both drugs perform the same function so providing just one is correct.
+
+
+Here's an example where providing some of the treatment is wrong:
+
+Provided answer: 
+'''
+Ciprofloxacin, oral, 500 mg 12 hourly for 3 days 
+Doxycycline, oral, 100 mg 12 hourly for 14 days 
+'''
+
+Correct answer: 
+'''
+Ciprofloxacin, oral, 500 mg 12 hourly for 3 days 
+Doxycycline, oral, 100 mg 12 hourly for 14 days 
+Metronidazole, oral, 400 mg 12 hourly for 14 days 
+'''
+
+This is because the treatment for Acute Lower Abdominal Pain requires all 3 treatments. 
+
+
+Here are the topics and Case Study examples:

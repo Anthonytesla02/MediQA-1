@@ -1,0 +1,116 @@
+Topics:
+```
+Diarrhoea
+Rotavirus Disease and Diarrhoea 
+Constipation 
+Peptic Ulcer Disease 
+Gastro-oesophageal Reflux Disease 
+Haemorrhoids
+Vomiting
+Anaemia
+Measles
+Pertussis 
+Common cold
+Pneumonia 
+Headache 
+Boils
+Impetigo
+Buruli ulcer 
+Yaws
+Superficial Fungal Skin infections
+Pityriasis Versicolor 
+Herpes Simplex Infections
+
+
+Herpes Zoster Infections 
+Chicken pox
+Large Chronic Ulcers
+Pruritus
+Urticaria 
+Reactive Erythema and Bullous Reaction
+Acne Vulgaris 
+Eczema 
+Intertrigo 
+Diabetes Mellitus 
+Diabetic Ketoacidosis 
+Diabetes in Pregnancy 
+Treatment-Induced Hypoglycemia 
+Dyslipidaemia
+Goitre
+Hypothyroidism 
+Hyperthyroidism
+Overweight and Obesity 
+Dysmenorrhoea
+
+
+Abortion
+Abnormal Vaginal Bleeding 
+Abnormal Vaginal Discharge 
+Acute Lower Abdominal Pain 
+Menopause 
+Erectile Dysfunction 
+Urinary Tract Infection
+Sexually Transmitted Infections in Adults
+STI-related Urethral Discharge in Males
+Mycoplasma genitalum
+STI-related Persistent or Recurrent Urethral Discharge 
+STI-related Vaginal Discharge 
+STI-related Lower Abdominal Pain in Women 
+STI-related Genital Ulcer
+STI-related Scrotal Swelling 
+STI-related Inguinal Bubo
+STI-related Genital Warts
+STI-related Ano-rectal Related Syndromes
+STI-related Urethral Discharge Syndrome in Children 
+STI-related Vaginal Discharge Syndromes in Children 
+
+
+STI-related Lower Abdominal Pain or Pelvic Inflammatory Disease Syndrome in Children 
+STI-related Genital Ulcer Syndrome in Children 
+STI-related Ano-rectal Related Syndromes in Children 
+Fever 
+Tuberculosis 
+Typhoid fever 
+Malaria
+Uncomplicated Malaria 
+Severe Malaria 
+Malaria in Pregnancy 
+Worm Infestation 
+Xerophthalmia
+Foreign body in the eye
+Neonatal conjunctivitis 
+Red eye
+Stridor
+Acute Epiglottitis 
+Retropharyngeal Abscess 
+Pharyngitis and Tonsillitis
+Acute Sinusitis 
+
+
+Acute otitis Media 
+Chronic Otitis Media 
+Epistaxis
+Dental Caries
+Oral Candidiasis
+Acute Necrotizing Ulcerative Gingivitis 
+Acute Bacterial Sialoadenitis
+Chronic Periodontal Infections 
+Mouth Ulcers 
+Odontogenic Infections 
+Osteoarthritis 
+Rheumatoid arthritis 
+Juvenile Idiopathic Arthritis 
+Back pain 
+Gout
+Dislocations
+Open Fractures
+Cellulitis 
+Burns
+Wounds
+
+
+Bites and Stings
+Shock 
+Acute Allergic Reaction 
+
+```
