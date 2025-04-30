@@ -1,8 +1,12 @@
 // Case simulation with sequential question cards
-const API_ENDPOINTS = {
-  SIMULATION_NEW: '/api/simulation/new',
-  SIMULATION_SUBMIT: '/api/simulation/submit'
-};
+// Define API endpoints if not already defined
+if (typeof API_ENDPOINTS === 'undefined') {
+  var API_ENDPOINTS = {}
+}
+
+// Set simulation endpoints
+API_ENDPOINTS.SIMULATION_NEW = '/api/simulation/new';
+API_ENDPOINTS.SIMULATION_SUBMIT = '/api/simulation/submit';
 
 document.addEventListener('DOMContentLoaded', () => {
   const simulationContainer = document.querySelector('.simulation-container');
@@ -142,20 +146,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+// Function to load a new medical case
 async function loadNewCase() {
   const caseContent = document.getElementById('case-content');
-  const caseQuestions = document.getElementById('case-questions');
-  const mcQuestionsContainer = document.getElementById('mc-questions-container');
-  const ftQuestionsContainer = document.getElementById('ft-questions-container');
-  const diagnosisResult = document.getElementById('diagnosis-result');
+  const questionContainer = document.getElementById('question-container');
+  const caseResults = document.getElementById('case-results');
   
   // Reset UI
-  caseQuestions.style.display = 'none';
-  diagnosisResult.style.display = 'none';
+  if (questionContainer) questionContainer.innerHTML = '';
+  if (caseResults) caseResults.style.display = 'none';
   
-  // Clear questions containers
-  mcQuestionsContainer.innerHTML = '';
-  ftQuestionsContainer.innerHTML = '';
+  // Reset state
+  currentQuestionIndex = 0;
+  userAnswers = {};
   
   // Show loading state
   caseContent.innerHTML = '';
@@ -173,14 +176,13 @@ async function loadNewCase() {
     // Store current case
     currentCase = data;
     
-    // Render case
-    renderCase(data);
+    // Render case information cards
+    renderCaseCards(data);
     
-    // Render questions
-    renderQuestions(data);
-    
-    // Show questions
-    caseQuestions.style.display = 'block';
+    // Prepare the first question card
+    if (data.questions && data.questions.length > 0) {
+      renderQuestionCard(data.questions[0]);
+    }
     
     // Initialize expandable cards
     initExpandableCards();
