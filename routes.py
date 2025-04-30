@@ -119,49 +119,129 @@ def api_chat():
 def api_new_simulation():
     """API endpoint to get a new simulation case."""
     try:
-        # Generate case with improved logging
-        logger.info("Requesting new case simulation from AI")
-        case_data = generate_case_simulation()
+        # Generate a case from our list of topics using the knowledge base
+        logger.info("Requesting new case simulation from knowledge base")
         
-        if not case_data:
-            logger.error("Case simulation generation returned None")
-            return jsonify({
-                "error": "Failed to generate case simulation. The AI service may be experiencing issues."
-            }), 500
+        # Get all available topics
+        topics = [
+            "Diarrhoea", "Rotavirus Disease and Diarrhoea", "Constipation", "Peptic Ulcer Disease",
+            "Gastro-oesophageal Reflux Disease", "Haemorrhoids", "Vomiting", "Anaemia", "Measles",
+            "Pertussis", "Common cold", "Pneumonia", "Headache", "Boils", "Impetigo", "Buruli ulcer",
+            "Yaws", "Superficial Fungal Skin infections", "Pityriasis Versicolor", "Herpes Simplex Infections",
+            "Herpes Zoster Infections", "Chicken pox", "Large Chronic Ulcers", "Pruritus", "Urticaria",
+            "Reactive Erythema and Bullous Reaction", "Acne Vulgaris", "Eczema", "Intertrigo", "Diabetes Mellitus",
+            "Diabetic Ketoacidosis", "Diabetes in Pregnancy", "Treatment-Induced Hypoglycemia", "Dyslipidaemia",
+            "Goitre", "Hypothyroidism", "Hyperthyroidism", "Overweight and Obesity", "Dysmenorrhoea",
+            "Abortion", "Abnormal Vaginal Bleeding", "Abnormal Vaginal Discharge", "Acute Lower Abdominal Pain",
+            "Menopause", "Erectile Dysfunction", "Urinary Tract Infection", "Sexually Transmitted Infections in Adults",
+            "Fever", "Tuberculosis", "Typhoid fever", "Malaria", "Uncomplicated Malaria", "Severe Malaria",
+            "Malaria in Pregnancy", "Worm Infestation", "Xerophthalmia", "Foreign body in the eye",
+            "Neonatal conjunctivitis", "Red eye", "Stridor", "Acute Epiglottitis", "Retropharyngeal Abscess",
+            "Pharyngitis and Tonsillitis", "Acute Sinusitis", "Acute otitis Media", "Chronic Otitis Media",
+            "Epistaxis", "Dental Caries", "Oral Candidiasis", "Acute Necrotizing Ulcerative Gingivitis",
+            "Acute Bacterial Sialoadenitis", "Chronic Periodontal Infections", "Mouth Ulcers", "Odontogenic Infections",
+            "Osteoarthritis", "Rheumatoid arthritis", "Juvenile Idiopathic Arthritis", "Back pain", "Gout",
+            "Dislocations", "Open Fractures", "Cellulitis", "Burns", "Wounds", "Bites and Stings",
+            "Shock", "Acute Allergic Reaction"
+        ]
         
-        # Validate case data
-        required_fields = ['patient_info', 'presenting_complaint', 'patient_history', 'diagnosis', 'treatment', 'differential_reasoning']
-        missing_fields = [field for field in required_fields if field not in case_data]
+        # Randomly select a topic
+        from random import choice
+        selected_topic = choice(topics)
+        logger.info(f"Selected topic for case simulation: {selected_topic}")
         
-        if missing_fields:
-            logger.error(f"Missing required fields in case data: {missing_fields}")
-            return jsonify({"error": f"Case data is missing required fields: {', '.join(missing_fields)}"}), 500
+        # Use the RAG engine to get information about this topic from the knowledge base
+        from rag_engine import generate_context_for_query
+        topic_info = generate_context_for_query(selected_topic)
+        
+        # Create a presenting complaint based on the topic
+        # For this simpler version, we'll use a more straightforward case template
+        from ai_service import get_diagnosis_response
+        case_info = get_diagnosis_response(f"What are the symptoms, diagnosis criteria, and treatment for {selected_topic}?")
+        
+        # Create a patient scenario
+        from random import randint
+        age = randint(18, 75)  # Random age between 18-75
+        gender = choice(["male", "female"])
+        
+        # Generate a simple presenting complaint
+        presenting_complaint = f"A {age}-year-old {gender} presents with symptoms consistent with {selected_topic}."
+        
+        # Create a case structure with the correct fields
+        case_data = {
+            'presenting_complaint': presenting_complaint,
+            'diagnosis': selected_topic,
+            'treatment': "",  # Will be extracted from the topic_info
+            'differential_reasoning': ""  # Will be extracted from the topic_info
+        }
+        
+        try:
+            # Extract treatment information - handle potential API failures
+            treatment_info = get_diagnosis_response(f"What is the exact treatment for {selected_topic}?")
+            logger.info(f"Got treatment info (length: {len(treatment_info) if treatment_info else 0})")
+            
+            # If we got a treatment response, use it; otherwise use a fallback
+            if treatment_info and len(treatment_info) > 10:
+                case_data['treatment'] = treatment_info
+            else:
+                # Fallback treatment
+                case_data['treatment'] = f"Treatment for {selected_topic} typically includes medication, lifestyle changes, and regular follow-up with healthcare providers."
+                logger.warning(f"Using fallback treatment for {selected_topic}")
+        except Exception as e:
+            logger.error(f"Error getting treatment info: {e}")
+            # Fallback treatment
+            case_data['treatment'] = f"Treatment for {selected_topic} typically includes medication, lifestyle changes, and regular follow-up with healthcare providers."
+        
+        try:
+            # Generate differential reasoning - handle potential API failures
+            # Pick a random related condition for differential diagnosis
+            alternative_diagnoses = [t for t in topics if t != selected_topic]
+            differential_topic = choice(alternative_diagnoses[:10] if len(alternative_diagnoses) > 10 else alternative_diagnoses)
+            logger.info(f"Selected differential topic: {differential_topic}")
+            
+            differential_info = get_diagnosis_response(f"How do you differentiate {selected_topic} from {differential_topic}?")
+            logger.info(f"Got differential info (length: {len(differential_info) if differential_info else 0})")
+            
+            # If we got a differential response, use it; otherwise use a fallback
+            if differential_info and len(differential_info) > 10:
+                case_data['differential_reasoning'] = differential_info
+            else:
+                # Fallback differential reasoning
+                case_data['differential_reasoning'] = f"{selected_topic} and {differential_topic} can present with similar symptoms, but can be differentiated through careful history-taking and appropriate diagnostic tests."
+                logger.warning(f"Using fallback differential for {selected_topic} vs {differential_topic}")
+            
+            case_data['differential_topic'] = differential_topic
+        except Exception as e:
+            logger.error(f"Error getting differential info: {e}")
+            # Fallback differential reasoning
+            from random import choice
+            # Make sure alternative_diagnoses exists in case the exception was before it was created
+            if 'alternative_diagnoses' not in locals():
+                alternative_diagnoses = [t for t in topics if t != selected_topic]
+            differential_topic = choice(alternative_diagnoses[:5]) if alternative_diagnoses else "related condition"
+            case_data['differential_reasoning'] = f"{selected_topic} and {differential_topic} can present with similar symptoms, but can be differentiated through careful history-taking and appropriate diagnostic tests."
+            case_data['differential_topic'] = differential_topic
         
         # Store case in session
         session['current_case'] = case_data
         
-        # Remove diagnosis and other solution fields from response to avoid spoilers
+        # Create a client-facing response without the answers
         response_data = case_data.copy()
         response_data.pop('diagnosis', None)
         response_data.pop('treatment', None)
         response_data.pop('differential_reasoning', None)
         
-        # Set up the sequential questions structure
+        # Set up the sequential questions structure - just 2 questions as specified
         questions = [
             {
                 "id": 1,
-                "question": "What is your diagnosis for this patient?",
+                "question": "What's your Diagnosis?",
                 "field": "diagnosis"
             },
             {
                 "id": 2,
-                "question": "How would you treat this patient?",
+                "question": "How would you treat it?",
                 "field": "treatment"
-            },
-            {
-                "id": 3,
-                "question": f"Why did you choose your diagnosis instead of {case_data.get('differential_topic', 'alternative diagnosis')}?",
-                "field": "differential_reasoning"
             }
         ]
         
@@ -186,65 +266,123 @@ def api_submit_simulation():
     try:
         data = request.json
         answers = data.get('answers', {})
+        case_id = data.get('case_id')
         user_id = session.get('user_id')
         
         # Get current case from session
         current_case = session.get('current_case')
         if not current_case:
-            return jsonify({"error": "No active case found"}), 400
+            logger.warning("No active case found in session - attempt to recover")
+            # If there's no case in session but we have a case_id, try to create a minimum case
+            if case_id:
+                logger.info(f"Creating fallback case with id: {case_id}")
+                # Create a minimal case structure for evaluation
+                from random import choice
+                topics = [
+                    "Diarrhoea", "Constipation", "Peptic Ulcer Disease", "Fever", "Headache", 
+                    "Common cold", "Pneumonia", "Tuberculosis", "Malaria", "Diabetes Mellitus"
+                ]
+                # Use the provided case_id as the diagnosis if possible
+                diagnosis = case_id if case_id in topics else choice(topics)
+                current_case = {
+                    'diagnosis': diagnosis,
+                    'treatment': f"Treatment for {diagnosis} typically includes medications, rest, and symptomatic care.",
+                    'differential_reasoning': f"{diagnosis} can be differentiated from other conditions by its characteristic symptoms.",
+                    'differential_topic': case_id
+                }
+                # Store in session for future use
+                session['current_case'] = current_case
+            else:
+                return jsonify({"error": "No active case found. Please start a new case."}), 400
         
         # Validate answers
         if not answers:
             return jsonify({"error": "Answers are required"}), 400
             
         # Required answer fields based on the questions
-        questions = [
-            {"id": 1, "question": "What is your diagnosis for this patient?", "field": "diagnosis"},
-            {"id": 2, "question": "How would you treat this patient?", "field": "treatment"},
-            {"id": 3, "question": f"Why did you choose your diagnosis instead of {current_case.get('differential_topic', 'alternative diagnosis')}?", "field": "differential_reasoning"}
-        ]
-        required_fields = [q["field"] for q in questions]
+        required_fields = ['diagnosis', 'treatment']
         missing_fields = [field for field in required_fields if field not in answers]
         
         if missing_fields:
             return jsonify({"error": f"Missing required answers: {', '.join(missing_fields)}"}), 400
         
-        # Evaluate diagnosis answer using AI
-        diagnosis_result = None
-        try:
-            diagnosis_evaluation = evaluate_diagnosis(answers['diagnosis'], current_case['diagnosis'])
-            diagnosis_score = diagnosis_evaluation.get('score', 0)
-            diagnosis_feedback = diagnosis_evaluation.get('feedback', '')
-            diagnosis_result = {
-                'score': diagnosis_score,
-                'feedback': diagnosis_feedback,
-                'user_answer': answers['diagnosis'],
-                'correct_answer': current_case['diagnosis']
-            }
-        except Exception as e:
-            logger.error(f"Error evaluating diagnosis: {e}")
-            # Use simple score
-            similarity_score = 70 if answers['diagnosis'].lower() in current_case['diagnosis'].lower() else 50
-            diagnosis_result = {
-                'score': similarity_score,
-                'feedback': "Unable to provide detailed feedback at this time.",
-                'user_answer': answers['diagnosis'],
-                'correct_answer': current_case['diagnosis']
-            }
+        # Evaluate diagnosis answer
+        # Check if the user's answer contains key terms from the correct diagnosis
+        user_diagnosis = answers['diagnosis'].lower()
+        correct_diagnosis = current_case['diagnosis'].lower()
         
-        # Simple evaluation for other answers (gives credit for thoughtful responses)
-        treatment_score = min(80, max(50, len(answers['treatment']) // 10))
-        reasoning_score = min(80, max(50, len(answers['differential_reasoning']) // 10))
+        # Simple string matching evaluation for diagnosis
+        diagnosis_score = 0
+        diagnosis_feedback = ""
+        
+        # Check if the key terms from the diagnosis appear in the user's answer
+        diagnosis_key_terms = correct_diagnosis.split()
+        matched_terms = 0
+        
+        for term in diagnosis_key_terms:
+            if term.lower() in user_diagnosis and len(term) > 3:  # Only count meaningful terms
+                matched_terms += 1
+        
+        # Calculate score based on term matches
+        if correct_diagnosis in user_diagnosis:
+            # Exact match gets full score
+            diagnosis_score = 100
+            diagnosis_feedback = "Perfect! Your diagnosis is correct."
+        elif matched_terms >= len(diagnosis_key_terms) // 2:
+            # Partial match gets partial score
+            diagnosis_score = 75
+            diagnosis_feedback = "Your diagnosis is close, but not quite the exact condition."
+        else:
+            # Few matches gets low score
+            diagnosis_score = 40
+            diagnosis_feedback = "Your diagnosis is different from the correct one."
+        
+        # Evaluate treatment answer
+        treatment_score = 0
+        treatment_feedback = ""
+        
+        # Convert to lowercase for case-insensitive matching
+        user_treatment = answers['treatment'].lower()
+        correct_treatment = current_case['treatment'].lower()
+        
+        # Check for similarity in treatment
+        correct_treatment_lines = correct_treatment.split('\n')
+        
+        # Extract key treatments (looking for medication names, dosages, etc.)
+        treatment_key_terms = []
+        for line in correct_treatment_lines:
+            # Look for medication names, dosages, etc.
+            if any(word in line.lower() for word in ["mg", "dose", "daily", "oral", "injection", "tablets"]):
+                treatment_key_terms.extend([term for term in line.split() if len(term) > 4])
+        
+        # If we couldn't find specific treatments, use the whole treatment text
+        if not treatment_key_terms:
+            treatment_key_terms = correct_treatment.split()
+        
+        # Count matched terms
+        matched_treatment_terms = 0
+        for term in treatment_key_terms:
+            if term.lower() in user_treatment and len(term) > 3:
+                matched_treatment_terms += 1
+        
+        # Calculate treatment score
+        if matched_treatment_terms >= len(treatment_key_terms) // 2:
+            treatment_score = 90
+            treatment_feedback = "Your treatment plan is appropriate for this condition."
+        elif matched_treatment_terms > 0:
+            treatment_score = 60
+            treatment_feedback = "Your treatment plan has some correct elements, but is missing key components."
+        else:
+            treatment_score = 30
+            treatment_feedback = "Your treatment plan differs from the recommended approach."
         
         # Calculate overall score (weighted average)
-        diagnosis_weight = 0.5  # 50% of total score
-        treatment_weight = 0.25  # 25% of total score
-        reasoning_weight = 0.25  # 25% of total score
+        diagnosis_weight = 0.6  # 60% of total score
+        treatment_weight = 0.4  # 40% of total score
         
         overall_score = int(
-            (diagnosis_result['score'] * diagnosis_weight) + 
-            (treatment_score * treatment_weight) + 
-            (reasoning_score * reasoning_weight)
+            (diagnosis_score * diagnosis_weight) + 
+            (treatment_score * treatment_weight)
         )
         
         # Generate feedback based on score
@@ -266,8 +404,8 @@ def api_submit_simulation():
             if not case:
                 case = Case(
                     title=case_title,
-                    description=json.dumps(current_case.get('patient_info', {})),
-                    symptoms=json.dumps(current_case.get('patient_history', {})),
+                    description=json.dumps({}),  # No patient info in new format
+                    symptoms=json.dumps({}),  # No symptoms in new format
                     diagnosis=current_case.get('diagnosis', ''),
                     difficulty=2  # Medium difficulty by default
                 )
@@ -308,31 +446,6 @@ def api_submit_simulation():
             
             db.session.commit()
         
-        # Prepare results for each question
-        results = [
-            {
-                'question': "What is your diagnosis for this patient?",
-                'user_answer': answers['diagnosis'],
-                'correct_answer': current_case['diagnosis'],
-                'score': diagnosis_result['score'],
-                'feedback': diagnosis_result['feedback']
-            },
-            {
-                'question': "How would you treat this patient?",
-                'user_answer': answers['treatment'],
-                'correct_answer': current_case['treatment'],
-                'score': treatment_score,
-                'feedback': "Your treatment plan has been evaluated based on completeness and relevance."
-            },
-            {
-                'question': f"Why did you choose your diagnosis instead of {current_case.get('differential_topic', 'alternative diagnosis')}?",
-                'user_answer': answers['differential_reasoning'],
-                'correct_answer': current_case['differential_reasoning'],
-                'score': reasoning_score,
-                'feedback': "Your differential reasoning has been evaluated based on clinical justification and logic."
-            }
-        ]
-        
         # Return result
         return jsonify({
             "score": overall_score,
@@ -340,27 +453,20 @@ def api_submit_simulation():
             "questions": [
                 {
                     "id": 1,
-                    "question": "What is your diagnosis for this patient?",
+                    "question": "What's your Diagnosis?",
                     "field": "diagnosis",
-                    "correct": diagnosis_result['score'] >= 70,
-                    "feedback": diagnosis_result['feedback']
+                    "correct": diagnosis_score >= 70,
+                    "feedback": diagnosis_feedback
                 },
                 {
                     "id": 2,
-                    "question": "How would you treat this patient?",
+                    "question": "How would you treat it?",
                     "field": "treatment",
                     "correct": treatment_score >= 70,
-                    "feedback": "Your treatment plan has been evaluated based on completeness and relevance."
-                },
-                {
-                    "id": 3,
-                    "question": f"Why did you choose your diagnosis instead of {current_case.get('differential_topic', 'alternative diagnosis')}?",
-                    "field": "differential_reasoning",
-                    "correct": reasoning_score >= 70,
-                    "feedback": "Your differential reasoning has been evaluated based on clinical justification and logic."
+                    "feedback": treatment_feedback
                 }
             ],
-            "topic": current_case.get('topic', ''),
+            "topic": current_case.get('topic', current_case.get('diagnosis', '')),
             "differential_topic": current_case.get('differential_topic', '')
         })
     except Exception as e:

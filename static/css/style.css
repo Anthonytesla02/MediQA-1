@@ -1452,3 +1452,216 @@ a:hover {
     max-width: 1140px;
   }
 }
+
+/* Simulation styles */
+.simulation-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Updated presenting complaint section */
+.presenting-complaint {
+  margin-bottom: 1.5rem;
+}
+
+.complaint-card {
+  background-color: var(--card-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--primary-color);
+}
+
+.complaint-card h3 {
+  color: var(--primary-color);
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+/* Questions container */
+.questions-container {
+  position: relative;
+}
+
+.question-card {
+  background-color: var(--card-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.question-card.hidden-question {
+  display: none;
+}
+
+.question-card h3 {
+  margin-top: 0;
+  color: var(--text-color);
+}
+
+.answer-input {
+  margin: 1.5rem 0;
+}
+
+.answer-input textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+  transition: border-color 0.3s ease;
+}
+
+.answer-input textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.submit-btn {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.submit-btn:hover {
+  background-color: #2980b9;
+}
+
+.submit-btn:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+/* Results container */
+.results-container {
+  background-color: var(--card-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  display: none;
+}
+
+.result-title {
+  color: var(--primary-color);
+  margin-top: 0;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.score {
+  font-size: 1.2rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: var(--border-radius);
+}
+
+.result-feedback {
+  font-style: italic;
+  border-left: 3px solid var(--primary-color);
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+}
+
+.result-item {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.result-item.correct {
+  border-left: 4px solid #2ecc71;
+}
+
+.result-item.incorrect {
+  border-left: 4px solid #e74c3c;
+}
+
+.result-question {
+  font-weight: bold;
+  margin-bottom: 0.75rem;
+}
+
+.result-subtitle {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.result-user-answer {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: var(--border-radius);
+}
+
+/* Progress indicator styles */
+.question-progress {
+  text-align: center;
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.progress-text {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 1rem;
+}
+
+#current-question {
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.shortcut-notice {
+  text-align: center;
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.topic-summary {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: var(--border-radius);
+}
+
+/* Animation for skeleton loader */
+.skeleton-loader {
+  height: 150px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: var(--border-radius);
+  margin-bottom: 1rem;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
