@@ -1,12 +1,16 @@
 // Case simulation with sequential question cards
-// Define API endpoints if not already defined
+// Define API endpoints if not already defined in main.js
 if (typeof API_ENDPOINTS === 'undefined') {
-  var API_ENDPOINTS = {}
+  window.API_ENDPOINTS = {};
 }
 
-// Set simulation endpoints
-API_ENDPOINTS.SIMULATION_NEW = '/api/simulation/new';
-API_ENDPOINTS.SIMULATION_SUBMIT = '/api/simulation/submit';
+// Set simulation endpoints if not already set
+if (!API_ENDPOINTS.SIMULATION_NEW) {
+  API_ENDPOINTS.SIMULATION_NEW = '/api/simulation/new';
+}
+if (!API_ENDPOINTS.SIMULATION_SUBMIT) {
+  API_ENDPOINTS.SIMULATION_SUBMIT = '/api/simulation/submit';
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   const simulationContainer = document.querySelector('.simulation-container');
@@ -49,52 +53,130 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
+  // Function to render a question card
+  function renderQuestionCard(question, index) {
+    const questionContainer = document.getElementById('question-container');
+    
+    // Create a new question card
+    const questionCard = document.createElement('div');
+    questionCard.className = 'question-card';
+    questionCard.dataset.questionId = question.id;
+    
+    // Set card position class (active, prev, next)
+    if (index === currentQuestionIndex) {
+      questionCard.classList.add('active');
+    } else if (index < currentQuestionIndex) {
+      questionCard.classList.add('prev');
+    } else {
+      questionCard.classList.add('next');
+    }
+    
+    // Create card content
+    const cardTitle = document.createElement('h3');
+    cardTitle.textContent = question.question;
+    questionCard.appendChild(cardTitle);
+    
+    // Create input field based on the question type
+    const answerArea = document.createElement('div');
+    answerArea.className = 'answer-area';
+    
+    // Use textarea for all questions
+    const textarea = document.createElement('textarea');
+    textarea.className = 'question-textarea';
+    textarea.placeholder = 'Enter your answer...';
+    // If there's already an answer, show it
+    if (userAnswers[question.field]) {
+      textarea.value = userAnswers[question.field];
+    }
+    
+    answerArea.appendChild(textarea);
+    questionCard.appendChild(answerArea);
+    
+    // Add submit button
+    const submitButton = document.createElement('button');
+    submitButton.className = 'btn btn-primary question-submit';
+    submitButton.textContent = 'Next';
+    
+    // If this is the last question, change button text
+    if (index === currentCase.questions.length - 1) {
+      submitButton.textContent = 'Submit';
+    }
+    
+    submitButton.addEventListener('click', () => {
+      // Store the answer
+      const answerText = textarea.value.trim();
+      if (!answerText) {
+        showToast('Error', 'Please provide an answer', 'error');
+        return;
+      }
+      
+      // Save the answer
+      userAnswers[question.field] = answerText;
+      
+      // If this is the last question, submit all answers
+      if (index === currentCase.questions.length - 1) {
+        submitAllAnswers();
+      } else {
+        // Show next question
+        moveToNextQuestion();
+      }
+    });
+    
+    questionCard.appendChild(submitButton);
+    questionContainer.appendChild(questionCard);
+    
+    // Make sure feather icons are initialized
+    if (typeof feather !== 'undefined') {
+      feather.replace();
+    }
+    
+    return questionCard;
+  }
+  
+  // Function to move to the next question
+  function moveToNextQuestion() {
+    if (currentQuestionIndex < currentCase.questions.length - 1) {
+      // Get current and next cards
+      const cards = document.querySelectorAll('.question-card');
+      const currentCard = cards[currentQuestionIndex];
+      
+      // Apply slide-out animation to current card
+      currentCard.classList.remove('active');
+      currentCard.classList.add('slide-out');
+      
+      // Update index
+      currentQuestionIndex++;
+      
+      // Create next question card if it doesn't exist
+      let nextCard = document.querySelector(`.question-card[data-question-id="${currentCase.questions[currentQuestionIndex].id}"]`);
+      if (!nextCard) {
+        nextCard = renderQuestionCard(currentCase.questions[currentQuestionIndex], currentQuestionIndex);
+      }
+      
+      // Remove next class and add active + slide-in
+      nextCard.classList.remove('next');
+      nextCard.classList.add('active', 'slide-in');
+      
+      // After animation completes, remove animation classes
+      setTimeout(() => {
+        currentCard.classList.remove('slide-out');
+        currentCard.classList.add('prev');
+        nextCard.classList.remove('slide-in');
+      }, 500);
+    }
+  }
+  
   // Function to submit all answers
-  async function submitAnswers() {
-    // Collect multiple choice answers
-    const mcAnswers = {};
-    document.querySelectorAll('.mc-question').forEach(question => {
-      const questionId = question.dataset.questionId;
-      const selectedOption = question.querySelector('input[type="radio"]:checked');
-      if (selectedOption) {
-        mcAnswers[questionId] = selectedOption.value;
-      }
-    });
-    
-    // Collect free text answers
-    const ftAnswers = {};
-    document.querySelectorAll('.ft-question').forEach(question => {
-      const questionId = question.dataset.questionId;
-      const answerInput = question.querySelector('.free-text-input');
-      if (answerInput && answerInput.value.trim()) {
-        ftAnswers[questionId] = answerInput.value.trim();
-      }
-    });
-    
-    // Check if all questions are answered
-    const mcQuestionsCount = document.querySelectorAll('.mc-question').length;
-    const ftQuestionsCount = document.querySelectorAll('.ft-question').length;
-    
-    if (Object.keys(mcAnswers).length < mcQuestionsCount) {
-      showToast('Error', 'Please answer all multiple choice questions', 'error');
+  async function submitAllAnswers() {
+    if (Object.keys(userAnswers).length < currentCase.questions.length) {
+      showToast('Error', 'Please answer all questions', 'error');
       return;
     }
-    
-    if (Object.keys(ftAnswers).length < ftQuestionsCount) {
-      showToast('Error', 'Please answer all free text questions', 'error');
-      return;
-    }
-    
-    // Prepare data for submission
-    const submission = {
-      mc_answers: mcAnswers,
-      ft_answers: ftAnswers,
-      case_id: currentCase.id || 'current'
-    };
     
     // Show loading state
-    submitAnswersBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Evaluating...';
-    submitAnswersBtn.disabled = true;
+    const submitBtn = document.querySelector('.question-card.active .question-submit');
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Evaluating...';
+    submitBtn.disabled = true;
     
     try {
       // Submit answers
@@ -103,28 +185,49 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(submission)
+        body: JSON.stringify({
+          answers: userAnswers,
+          case_id: currentCase.id || 'current'
+        })
       });
       
       const data = await response.json();
       
       // Reset button
-      submitAnswersBtn.innerHTML = 'Submit All Answers';
-      submitAnswersBtn.disabled = false;
+      submitBtn.innerHTML = 'Submit';
+      submitBtn.disabled = false;
       
       if (data.error) {
         showToast('Error', data.error, 'error');
         return;
       }
       
-      // Show diagnosis result
+      // Create and slide-in the results card
+      const questionContainer = document.getElementById('question-container');
+      const resultCard = document.createElement('div');
+      resultCard.id = 'case-results';
+      resultCard.className = 'case-results';
+      resultCard.style.display = 'block';
+      resultCard.style.opacity = '0';
+      resultCard.style.transform = 'translateX(120%)';
+      
+      // Hide all question cards
+      document.querySelectorAll('.question-card').forEach(card => {
+        card.style.display = 'none';
+      });
+      
+      // Append result card to container
+      questionContainer.appendChild(resultCard);
+      
+      // Show results inside the card
       showResults(data);
       
-      // Hide questions
-      caseQuestions.style.display = 'none';
-      
-      // Show result
-      diagnosisResult.style.display = 'block';
+      // Animate result card
+      setTimeout(() => {
+        resultCard.style.transition = 'opacity 0.5s, transform 0.5s';
+        resultCard.style.opacity = '1';
+        resultCard.style.transform = 'translateX(0)';
+      }, 100);
       
       // Haptic feedback
       if (typeof hapticFeedback === 'function') {
@@ -139,8 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Answer submission error:', error);
       
       // Reset button
-      submitAnswersBtn.innerHTML = 'Submit All Answers';
-      submitAnswersBtn.disabled = false;
+      submitBtn.innerHTML = 'Submit';
+      submitBtn.disabled = false;
       
       showToast('Error', 'An error occurred submitting your answers', 'error');
     }
@@ -177,11 +280,11 @@ async function loadNewCase() {
     currentCase = data;
     
     // Render case information cards
-    renderCaseCards(data);
+    renderCase(data);
     
     // Prepare the first question card
     if (data.questions && data.questions.length > 0) {
-      renderQuestionCard(data.questions[0]);
+      renderQuestionCard(data.questions[0], 0);
     }
     
     // Initialize expandable cards
@@ -539,6 +642,126 @@ function showDiagnosisResult(data, userDiagnosis) {
 }
 
 // Function to render questions
+function showResults(data) {
+  const resultsContainer = document.getElementById('case-results');
+  resultsContainer.innerHTML = '';
+
+  // Create header with overall evaluation
+  const resultHeader = document.createElement('div');
+  resultHeader.className = 'result-header';
+  
+  const score = data.score || 0;
+  const isCorrect = score >= 70;
+  
+  const resultIcon = document.createElement('div');
+  resultIcon.className = `result-icon ${isCorrect ? 'correct' : 'incorrect'}`;
+  resultIcon.innerHTML = isCorrect ? 
+    '<i data-feather="check-circle"></i>' : 
+    '<i data-feather="x-circle"></i>';
+  
+  const resultTitle = document.createElement('h3');
+  resultTitle.className = 'result-title';
+  resultTitle.textContent = isCorrect ? 'Good job!' : 'Needs improvement';
+  
+  resultHeader.appendChild(resultIcon);
+  resultHeader.appendChild(resultTitle);
+  
+  resultsContainer.appendChild(resultHeader);
+  
+  // Show score
+  const resultScore = document.createElement('div');
+  resultScore.className = 'result-score';
+  resultScore.textContent = `Score: ${score}/100`;
+  resultsContainer.appendChild(resultScore);
+  
+  // Show overall feedback
+  if (data.feedback) {
+    const resultFeedback = document.createElement('div');
+    resultFeedback.className = 'result-feedback';
+    resultFeedback.textContent = data.feedback;
+    resultsContainer.appendChild(resultFeedback);
+  }
+  
+  // Create sections for each question
+  if (data.questions) {
+    data.questions.forEach((question, index) => {
+      const section = document.createElement('div');
+      section.className = 'results-section';
+      
+      const sectionTitle = document.createElement('h3');
+      sectionTitle.textContent = `Question ${index + 1}: ${question.question}`;
+      section.appendChild(sectionTitle);
+      
+      // Create comparison section
+      const answerComparison = document.createElement('div');
+      answerComparison.className = 'answer-comparison';
+      
+      // Your answer box
+      const userBox = document.createElement('div');
+      userBox.className = 'user-answer-box';
+      
+      const userBoxTitle = document.createElement('h4');
+      userBoxTitle.textContent = 'Your Answer';
+      userBox.appendChild(userBoxTitle);
+      
+      const userAnswer = document.createElement('p');
+      userAnswer.textContent = userAnswers[question.field] || 'No answer provided';
+      userBox.appendChild(userAnswer);
+      
+      // Correct answer box
+      const correctBox = document.createElement('div');
+      correctBox.className = 'correct-answer-box';
+      
+      const correctBoxTitle = document.createElement('h4');
+      correctBoxTitle.textContent = 'Expected Answer';
+      correctBox.appendChild(correctBoxTitle);
+      
+      const correctAnswer = document.createElement('p');
+      correctAnswer.textContent = currentCase[question.field] || 'No reference answer available';
+      correctBox.appendChild(correctAnswer);
+      
+      answerComparison.appendChild(userBox);
+      answerComparison.appendChild(correctBox);
+      section.appendChild(answerComparison);
+      
+      // Question-specific feedback
+      if (question.feedback) {
+        const questionFeedback = document.createElement('div');
+        questionFeedback.className = 'question-result ' + (question.correct ? 'correct' : 'incorrect');
+        
+        const feedbackTitle = document.createElement('h5');
+        feedbackTitle.textContent = question.correct ? 'Feedback: Good answer!' : 'Feedback: Needs improvement';
+        questionFeedback.appendChild(feedbackTitle);
+        
+        const feedbackText = document.createElement('p');
+        feedbackText.textContent = question.feedback;
+        questionFeedback.appendChild(feedbackText);
+        
+        section.appendChild(questionFeedback);
+      }
+      
+      resultsContainer.appendChild(section);
+    });
+  }
+  
+  // Add actions
+  const actionButtons = document.createElement('div');
+  actionButtons.className = 'action-buttons';
+  
+  const newCaseButton = document.createElement('button');
+  newCaseButton.className = 'btn btn-primary';
+  newCaseButton.innerHTML = '<i data-feather="refresh-cw"></i> New Case';
+  newCaseButton.addEventListener('click', loadNewCase);
+  
+  actionButtons.appendChild(newCaseButton);
+  resultsContainer.appendChild(actionButtons);
+  
+  // Initialize feather icons
+  if (typeof feather !== 'undefined') {
+    feather.replace();
+  }
+}
+
 function renderQuestions(caseData) {
   const mcQuestionsContainer = document.getElementById('mc-questions-container');
   const ftQuestionsContainer = document.getElementById('ft-questions-container');

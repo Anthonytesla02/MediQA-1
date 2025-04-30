@@ -217,7 +217,25 @@ def create_medical_case_from_topic(topic, topic_info):
         elif '```' in response:
             response = response.split('```')[1].split('```')[0].strip()
         
-        case_data = json.loads(response)
+        # Additional cleanup to handle potential JSON issues
+        response = response.replace('\n', ' ').replace('\r', ' ')
+        response = response.replace('\\', '\\\\')  # Escape backslashes
+        
+        # Try to find and fix common JSON syntax errors
+        response = response.replace('},}', '}}')   # Fix double closing
+        response = response.replace(',}', '}')     # Fix trailing commas
+        response = response.replace('{,', '{')     # Fix leading commas
+        
+        # Log the cleaned response for debugging
+        logger.debug(f"Cleaned JSON response: {response}")
+        
+        try:
+            case_data = json.loads(response)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing error: {e}")
+            logger.error(f"Problematic JSON: {response}")
+            # Create a fallback case
+            return create_fallback_case_from_topic(topic, differential_diagnosis)
         
         # Ensure all required fields are present
         required_fields = ['patient_info', 'presenting_complaint', 'patient_history', 'diagnosis', 'treatment', 'differential_reasoning']
