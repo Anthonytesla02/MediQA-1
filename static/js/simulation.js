@@ -429,7 +429,47 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // For treatment responses, we need to format and trim them
             if (question.field === 'treatment') {
-              // Check if the answer already contains bullet points\n              let formattedAnswer = "";\n              \n              if (correctAnswer.includes("\n") || correctAnswer.includes("\u2022")) {\n                // The answer is already formatted with bullets or line breaks\n                formattedAnswer = correctAnswer;\n              } else if (correctAnswer.length > 200) {\n                // For plain text answers that are long, format with bullet points\n                // Detect common separators (periods, semicolons)\n                let lines = [];\n                if (correctAnswer.includes(";")) {\n                  lines = correctAnswer.split(";");\n                } else {\n                  lines = correctAnswer.split(".");\n                }\n                \n                let bulletPoints = [];\n                \n                // Process each line into bullet points, skipping empty ones\n                for (let line of lines) {\n                  line = line.trim();\n                  if (line.length > 10) { // Skip very short fragments\n                    // Remove any numbering or dash prefixes\n                    line = line.replace(/^\\d+\\s*[\\)\\.]*\\s*/, "");\n                    line = line.replace(/^-\\s*/, "");\n                    line = line.replace(/^\\u2022\\s*/, "");\n                    \n                    // Skip lines with IV/IM mentions - not for pharmacy practice\n                    if (!line.match(/\\b(IV|iv|intravenous|IM|im|intramuscular|injection|infusion|surgical|surgery|incision|drain|catheter|lumbar|puncture|biopsy)\\b/i)) {\n                      bulletPoints.push("\\u2022 " + line);\n                    }\n                  }\n                }\n                \n                // Take only up to 5 key points to keep it manageable\n                bulletPoints = bulletPoints.slice(0, 5);\n                formattedAnswer = bulletPoints.join("\\n");\n              } else {\n                formattedAnswer = correctAnswer;\n              }
+              // Split into bullet points if it's a long answer
+              let formattedAnswer = '';
+              
+              // Check if the answer already has formatting
+              if (correctAnswer.includes('\n') || correctAnswer.includes('\u2022')) {
+                // The answer is already formatted with bullets or line breaks
+                formattedAnswer = correctAnswer;
+              } else if (correctAnswer.length > 200) {
+                // For plain text answers that are long, format with bullet points
+                // Detect common separators (periods, semicolons)
+                let lines = [];
+                if (correctAnswer.includes(';')) {
+                  lines = correctAnswer.split(';');
+                } else {
+                  lines = correctAnswer.split('.');
+                }
+                
+                let bulletPoints = [];
+                
+                // Process each line into bullet points, skipping empty ones
+                for (let line of lines) {
+                  line = line.trim();
+                  if (line.length > 10) { // Skip very short fragments
+                    // Remove any numbering or dash prefixes
+                    line = line.replace(/^\d+\s*[\)\.]*\s*/, '');
+                    line = line.replace(/^-\s*/, '');
+                    line = line.replace(/^\u2022\s*/, '');
+                    
+                    // Skip lines with IV/IM mentions - not for pharmacy practice
+                    if (!line.match(/\b(IV|iv|intravenous|IM|im|intramuscular|injection|infusion|surgical|surgery|incision|drain|catheter|lumbar|puncture|biopsy)\b/i)) {
+                      bulletPoints.push('\u2022 ' + line);
+                    }
+                  }
+                }
+                
+                // Take only up to 5 key points to keep it manageable
+                bulletPoints = bulletPoints.slice(0, 5);
+                formattedAnswer = bulletPoints.join('\n');
+              } else {
+                formattedAnswer = correctAnswer;
+              }
               
               const correctAnswerEl = document.createElement('div');
               correctAnswerEl.className = 'result-correct-answer';

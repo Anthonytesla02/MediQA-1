@@ -876,18 +876,19 @@ def api_submit_simulation():
             
             # Save attempt with answers
             try:
-                # Convert answers to a more concise format to avoid varchar limits
-                answers_truncated = {}
-                for key, value in answers.items():
-                    # Limit each answer to 100 characters to fit column size
-                    answers_truncated[key] = value[:100] + '...' if len(value) > 100 else value
+                # Create a very concise format for answers to avoid db errors
+                # Store just a summary for database purposes
+                answer_summary = {
+                    'diagnosis': answers.get('diagnosis', '')[:50] + '...' if len(answers.get('diagnosis', '')) > 50 else answers.get('diagnosis', ''),
+                    'treatment': answers.get('treatment', '')[:50] + '...' if len(answers.get('treatment', '')) > 50 else answers.get('treatment', '')
+                }
                 
                 attempt = CaseAttempt(
                     user_id=user_id,
                     case_id=case.id,
                     completed=True,
                     score=overall_score,
-                    diagnosis=json.dumps(answers_truncated),
+                    diagnosis=json.dumps(answer_summary),  # Use summarized version to prevent DB errors
                     correct=overall_score >= 70
                 )
                 db.session.add(attempt)
