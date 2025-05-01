@@ -187,6 +187,23 @@ document.addEventListener('DOMContentLoaded', () => {
       answerInput.appendChild(textarea);
       questionCard.appendChild(answerInput);
       
+      // Create a button container for alignment
+      const buttonContainer = document.createElement('div');
+      buttonContainer.className = 'button-container';
+      
+      // Only add back button if this is not the first question
+      if (index > 0) {
+        const backButton = document.createElement('button');
+        backButton.className = 'back-btn';
+        backButton.textContent = 'Back';
+        
+        backButton.addEventListener('click', () => {
+          moveToQuestion(index - 1); // Move to previous question
+        });
+        
+        buttonContainer.appendChild(backButton);
+      }
+      
       const submitButton = document.createElement('button');
       submitButton.className = 'submit-btn';
       submitButton.textContent = index === questions.length - 1 ? 'Submit' : 'Next';
@@ -195,7 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
         handleQuestionSubmit(question, index);
       });
       
-      questionCard.appendChild(submitButton);
+      buttonContainer.appendChild(submitButton);
+      questionCard.appendChild(buttonContainer);
       questionsContainer.appendChild(questionCard);
     });
   }
@@ -228,28 +246,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
-  // Function to move to the next question
-  function moveToNextQuestion(currentIndex) {
-    // Hide current question
-    const currentQuestion = document.querySelector(`.question-card[data-question-index="${currentIndex}"]`);
-    currentQuestion.classList.add('hidden-question');
+  // Function to move to a specific question by index
+  function moveToQuestion(targetIndex) {
+    // Hide all questions
+    const allQuestions = document.querySelectorAll('.question-card');
+    allQuestions.forEach(card => {
+      card.classList.add('hidden-question');
+    });
     
-    // Show next question
-    const nextIndex = currentIndex + 1;
-    const nextQuestion = document.querySelector(`.question-card[data-question-index="${nextIndex}"]`);
-    nextQuestion.classList.remove('hidden-question');
+    // Show the target question
+    const targetQuestion = document.querySelector(`.question-card[data-question-index="${targetIndex}"]`);
+    targetQuestion.classList.remove('hidden-question');
     
     // Update progress indicator
     const progressIndicator = document.getElementById('current-question');
     if (progressIndicator) {
-      progressIndicator.textContent = nextIndex + 1; // +1 because it's 0-indexed
+      progressIndicator.textContent = targetIndex + 1; // +1 because it's 0-indexed
     }
     
-    // Focus on the next textarea
+    // Focus on the textarea
     setTimeout(() => {
-      const nextTextarea = nextQuestion.querySelector('textarea');
-      if (nextTextarea) nextTextarea.focus();
+      const targetTextarea = targetQuestion.querySelector('textarea');
+      if (targetTextarea) targetTextarea.focus();
     }, 100);
+  }
+  
+  // Function to move to the next question (convenience wrapper)
+  function moveToNextQuestion(currentIndex) {
+    moveToQuestion(currentIndex + 1);
   }
   
   // Function to submit all answers
