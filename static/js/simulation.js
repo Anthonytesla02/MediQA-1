@@ -403,13 +403,20 @@ document.addEventListener('DOMContentLoaded', () => {
               correctAnswer = match[1];
             }
           } else if (question.field === 'treatment') {
-            // Handle both standard format and bullet point format
-            let match = question.feedback.match(/Recommended treatment: ([\s\S]+)/);
+            // Handle various treatment feedback formats
+            // First, try to match the new "Correct answer:" format
+            let match = question.feedback.match(/Correct answer:([\s\S]+)/);
+            
+            // If not found, try legacy formats
+            if (!match) {
+              match = question.feedback.match(/Recommended treatment: ([\s\S]+)/);
+            }
             if (!match) {
               match = question.feedback.match(/Recommended treatment includes: ([\s\S]+)/);
             }
+            
             if (match && match[1]) {
-              correctAnswer = match[1];
+              correctAnswer = match[1].trim();
             }
           }
           
@@ -422,42 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // For treatment responses, we need to format and trim them
             if (question.field === 'treatment') {
-              // Split into bullet points if it's a long answer
-              let formattedAnswer = '';
-              
-              // Check if the answer is very long (>200 chars)
-              if (correctAnswer.length > 200) {
-                // Create a formatted bullet list from the treatment
-                const lines = correctAnswer.split('.');
-                let bulletPoints = [];
-                
-                // Process each line into bullet points, skipping empty ones
-                for (let line of lines) {
-                  line = line.trim();
-                  if (line.length > 10) { // Skip very short fragments
-                    // Remove any numbering or dash prefixes
-                    line = line.replace(/^\d+\s*[\)\.]\s*/, '');
-                    line = line.replace(/^-\s*/, '');
-                    line = line.replace(/^\u2022\s*/, '');
-                    
-                    // Skip lines with IV/IM mentions and surgical procedures - these aren't allowed in pharmacy practice
-                    if (!line.match(/\b(IV|iv|intravenous|IM|im|intramuscular|injection|infusion|surgical|surgery|incision|drain|catheter|lumbar|puncture|biopsy)\b/i)) {
-                      bulletPoints.push('\u2022 ' + line);
-                    }
-                  }
-                }
-                
-                // Take only up to 5 key points to keep it manageable
-                bulletPoints = bulletPoints.slice(0, 5);
-                formattedAnswer = bulletPoints.join('\n');
-                
-                // Add a note if we shortened the answer significantly
-                if (lines.length > 6) {
-                  formattedAnswer += '\n\u2022 (Key points only, see guidelines for complete treatment)';
-                }
-              } else {
-                formattedAnswer = correctAnswer;
-              }
+              // Check if the answer already contains bullet points\n              let formattedAnswer = "";\n              \n              if (correctAnswer.includes("\n") || correctAnswer.includes("\u2022")) {\n                // The answer is already formatted with bullets or line breaks\n                formattedAnswer = correctAnswer;\n              } else if (correctAnswer.length > 200) {\n                // For plain text answers that are long, format with bullet points\n                // Detect common separators (periods, semicolons)\n                let lines = [];\n                if (correctAnswer.includes(";")) {\n                  lines = correctAnswer.split(";");\n                } else {\n                  lines = correctAnswer.split(".");\n                }\n                \n                let bulletPoints = [];\n                \n                // Process each line into bullet points, skipping empty ones\n                for (let line of lines) {\n                  line = line.trim();\n                  if (line.length > 10) { // Skip very short fragments\n                    // Remove any numbering or dash prefixes\n                    line = line.replace(/^\\d+\\s*[\\)\\.]*\\s*/, "");\n                    line = line.replace(/^-\\s*/, "");\n                    line = line.replace(/^\\u2022\\s*/, "");\n                    \n                    // Skip lines with IV/IM mentions - not for pharmacy practice\n                    if (!line.match(/\\b(IV|iv|intravenous|IM|im|intramuscular|injection|infusion|surgical|surgery|incision|drain|catheter|lumbar|puncture|biopsy)\\b/i)) {\n                      bulletPoints.push("\\u2022 " + line);\n                    }\n                  }\n                }\n                \n                // Take only up to 5 key points to keep it manageable\n                bulletPoints = bulletPoints.slice(0, 5);\n                formattedAnswer = bulletPoints.join("\\n");\n              } else {\n                formattedAnswer = correctAnswer;\n              }
               
               const correctAnswerEl = document.createElement('div');
               correctAnswerEl.className = 'result-correct-answer';
