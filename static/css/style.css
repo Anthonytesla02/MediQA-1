@@ -327,11 +327,12 @@ a:hover {
   padding: 0.5rem 0;
   justify-content: space-around;
   z-index: 1000;
-  height: 50px;
+  height: 65px; /* Increased to accommodate labels */
 }
 
 .tab-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 0.3rem;
@@ -350,10 +351,21 @@ a:hover {
   font-size: 1.2rem;
   color: var(--text-light);
   transition: color var(--transition-speed);
+  margin-bottom: 4px;
+}
+
+.tab-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-align: center;
+  color: var(--text-light);
+  transition: color var(--transition-speed);
 }
 
 .tab-item:hover .tab-icon,
-.tab-item.active .tab-icon {
+.tab-item.active .tab-icon,
+.tab-item:hover .tab-label,
+.tab-item.active .tab-label {
   color: var(--primary-color);
 }
 
