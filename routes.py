@@ -164,8 +164,30 @@ def api_new_simulation():
         age = randint(18, 75)  # Random age between 18-75
         gender = choice(["male", "female"])
         
-        # Generate a simple presenting complaint
-        presenting_complaint = f"A {age}-year-old {gender} presents with symptoms consistent with {selected_topic}."
+        # Generate a more realistic presenting complaint without revealing the diagnosis
+        prompt = f"Generate a realistic medical case presentation for a {age}-year-old {gender} with {selected_topic}, but DO NOT mention the diagnosis name anywhere in the description. Describe only the patient's symptoms, complaints, and relevant history in 1-2 sentences. Model the style after these examples: 'Patient presents with burning sensation in chest after meals' or 'Patient complains of frequent urination and excessive thirst for the past month'."
+        
+        try:
+            # Get AI to generate a realistic presenting complaint without revealing diagnosis
+            from ai_service import generate_ai_response
+            messages = [
+                {"role": "system", "content": "You are a medical case generator. Generate realistic patient presentations without revealing the diagnosis. Keep descriptions concise and focused on symptoms only."}, 
+                {"role": "user", "content": prompt}
+            ]
+            generated_complaint = generate_ai_response(messages, temperature=0.7, max_tokens=100)
+            
+            # Clean up and validate the response
+            if generated_complaint and len(generated_complaint) > 20 and selected_topic.lower() not in generated_complaint.lower():
+                presenting_complaint = generated_complaint
+                logger.info(f"Generated presenting complaint: {presenting_complaint[:50]}...")
+            else:
+                # Fallback to a generic template if something goes wrong
+                presenting_complaint = f"A {age}-year-old {gender} presents to the pharmacy with signs and symptoms that require assessment."
+                logger.warning("Using fallback presenting complaint template")
+        except Exception as e:
+            logger.error(f"Error generating presenting complaint: {e}")
+            # Fallback to a generic template
+            presenting_complaint = f"A {age}-year-old {gender} presents to the pharmacy with signs and symptoms that require assessment."
         
         # Create a case structure with the correct fields
         case_data = {
@@ -184,21 +206,28 @@ def api_new_simulation():
             if treatment_info and len(treatment_info) > 10:
                 case_data['treatment'] = treatment_info
             else:
-                # Fallback treatment
-                case_data['treatment'] = f"Treatment for {selected_topic} typically includes medication, lifestyle changes, and regular follow-up with healthcare providers."
+                # Fallback treatment (generic - doesn't reveal diagnosis)
+                case_data['treatment'] = "Treatment typically includes appropriate medications, lifestyle modifications, and regular monitoring by healthcare professionals."
                 logger.warning(f"Using fallback treatment for {selected_topic}")
         except Exception as e:
             logger.error(f"Error getting treatment info: {e}")
-            # Fallback treatment
-            case_data['treatment'] = f"Treatment for {selected_topic} typically includes medication, lifestyle changes, and regular follow-up with healthcare providers."
+            # Fallback treatment (generic - doesn't reveal diagnosis)
+            case_data['treatment'] = "Treatment typically includes appropriate medications, lifestyle modifications, and regular monitoring by healthcare professionals."
         
+        # Prepare for differential diagnosis
         try:
-            # Generate differential reasoning - handle potential API failures
             # Pick a random related condition for differential diagnosis
+            # Safe approach - create a list of alternatives ensuring selected_topic exists
             alternative_diagnoses = [t for t in topics if t != selected_topic]
+            # If we ended up with an empty list (shouldn't happen but just in case)
+            if not alternative_diagnoses:
+                alternative_diagnoses = ["Common cold", "Pneumonia", "Headache", "Fever"]
+                
+            # Choose a differential topic
             differential_topic = choice(alternative_diagnoses[:10] if len(alternative_diagnoses) > 10 else alternative_diagnoses)
             logger.info(f"Selected differential topic: {differential_topic}")
             
+            # Get differential reasoning information
             differential_info = get_diagnosis_response(f"How do you differentiate {selected_topic} from {differential_topic}?")
             logger.info(f"Got differential info (length: {len(differential_info) if differential_info else 0})")
             
@@ -207,19 +236,23 @@ def api_new_simulation():
                 case_data['differential_reasoning'] = differential_info
             else:
                 # Fallback differential reasoning
-                case_data['differential_reasoning'] = f"{selected_topic} and {differential_topic} can present with similar symptoms, but can be differentiated through careful history-taking and appropriate diagnostic tests."
+                case_data['differential_reasoning'] = f"These conditions can present with similar symptoms, but can be differentiated through careful history-taking and appropriate diagnostic tests."
                 logger.warning(f"Using fallback differential for {selected_topic} vs {differential_topic}")
             
+            # Save the differential topic
             case_data['differential_topic'] = differential_topic
+            
         except Exception as e:
+            # Log the error for debugging
             logger.error(f"Error getting differential info: {e}")
-            # Fallback differential reasoning
+            
+            # Create safe fallback
             from random import choice
-            # Make sure alternative_diagnoses exists in case the exception was before it was created
-            if 'alternative_diagnoses' not in locals():
-                alternative_diagnoses = [t for t in topics if t != selected_topic]
-            differential_topic = choice(alternative_diagnoses[:5]) if alternative_diagnoses else "related condition"
-            case_data['differential_reasoning'] = f"{selected_topic} and {differential_topic} can present with similar symptoms, but can be differentiated through careful history-taking and appropriate diagnostic tests."
+            fallback_topics = ["Common cold", "Pneumonia", "Headache", "Fever", "Malaria"]
+            differential_topic = choice(fallback_topics)
+            
+            # Set fallback differential information
+            case_data['differential_reasoning'] = "Differential diagnosis requires careful assessment of presenting symptoms, medical history, and appropriate diagnostic tests."
             case_data['differential_topic'] = differential_topic
         
         # Store case in session
@@ -284,10 +317,20 @@ def api_submit_simulation():
                 ]
                 # Use the provided case_id as the diagnosis if possible
                 diagnosis = case_id if case_id in topics else choice(topics)
+                
+                # Use a generic treatment description that doesn't reveal the diagnosis
+                from ai_service import get_diagnosis_response
+                try:
+                    treatment_info = get_diagnosis_response(f"What is the exact treatment for {diagnosis}?")
+                    if not treatment_info or len(treatment_info) < 10:
+                        treatment_info = "Treatment typically includes appropriate medications and lifestyle modifications based on clinical presentation."
+                except Exception:
+                    treatment_info = "Treatment typically includes appropriate medications and lifestyle modifications based on clinical presentation."
+                    
                 current_case = {
                     'diagnosis': diagnosis,
-                    'treatment': f"Treatment for {diagnosis} typically includes medications, rest, and symptomatic care.",
-                    'differential_reasoning': f"{diagnosis} can be differentiated from other conditions by its characteristic symptoms.",
+                    'treatment': treatment_info,
+                    'differential_reasoning': "Differential diagnosis requires careful assessment of presenting symptoms, medical history, and appropriate tests.",
                     'differential_topic': case_id
                 }
                 # Store in session for future use
@@ -466,7 +509,7 @@ def api_submit_simulation():
                     "feedback": treatment_feedback
                 }
             ],
-            "topic": current_case.get('topic', current_case.get('diagnosis', '')),
+            "topic": current_case.get('topic', 'Medical Condition'),
             "differential_topic": current_case.get('differential_topic', '')
         })
     except Exception as e:
