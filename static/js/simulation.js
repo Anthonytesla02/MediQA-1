@@ -64,12 +64,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Reset UI
     if (presentingComplaint) presentingComplaint.innerHTML = '';
-    if (questionsContainer) questionsContainer.innerHTML = '';
-    if (resultsContainer) resultsContainer.style.display = 'none';
+    if (questionsContainer) {
+      questionsContainer.innerHTML = '';
+      questionsContainer.style.display = 'block'; // Ensure questions are visible
+    }
+    if (resultsContainer) {
+      resultsContainer.innerHTML = ''; // Clear previous results
+      resultsContainer.style.display = 'none';
+    }
     
     // Reset state
     currentQuestionIndex = 0;
     userAnswers = {};
+    currentCase = null; // Clear current case reference
     
     // Show loading state
     presentingComplaint.innerHTML = '<div class="skeleton-loader"></div>';
@@ -318,6 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Showing results:', data);
     resultsContainer.innerHTML = '';
     resultsContainer.style.display = 'block';
+    questionsContainer.style.display = 'none'; // Hide questions when showing results
     
     // Clear the saved case since we're showing results
     try {
@@ -395,7 +403,11 @@ document.addEventListener('DOMContentLoaded', () => {
               correctAnswer = match[1];
             }
           } else if (question.field === 'treatment') {
-            const match = question.feedback.match(/Recommended treatment: ([\s\S]+)/);
+            // Handle both standard format and bullet point format
+            let match = question.feedback.match(/Recommended treatment: ([\s\S]+)/);
+            if (!match) {
+              match = question.feedback.match(/Recommended treatment includes: ([\s\S]+)/);
+            }
             if (match && match[1]) {
               correctAnswer = match[1];
             }
@@ -408,10 +420,57 @@ document.addEventListener('DOMContentLoaded', () => {
             correctTitle.textContent = 'Correct answer:';
             resultItem.appendChild(correctTitle);
             
-            const correctAnswerEl = document.createElement('div');
-            correctAnswerEl.className = 'result-correct-answer';
-            correctAnswerEl.textContent = correctAnswer;
-            resultItem.appendChild(correctAnswerEl);
+            // For treatment responses, we need to format and trim them
+            if (question.field === 'treatment') {
+              // Split into bullet points if it's a long answer
+              let formattedAnswer = '';
+              
+              // Check if the answer is very long (>200 chars)
+              if (correctAnswer.length > 200) {
+                // Create a formatted bullet list from the treatment
+                const lines = correctAnswer.split('.');
+                let bulletPoints = [];
+                
+                // Process each line into bullet points, skipping empty ones
+                for (let line of lines) {
+                  line = line.trim();
+                  if (line.length > 10) { // Skip very short fragments
+                    // Remove any numbering or dash prefixes
+                    line = line.replace(/^\d+\s*[\)\.]\s*/, '');
+                    line = line.replace(/^-\s*/, '');
+                    line = line.replace(/^\u2022\s*/, '');
+                    
+                    // Skip lines with IV/IM mentions and surgical procedures - these aren't allowed in pharmacy practice
+                    if (!line.match(/\b(IV|iv|intravenous|IM|im|intramuscular|injection|infusion|surgical|surgery|incision|drain|catheter|lumbar|puncture|biopsy)\b/i)) {
+                      bulletPoints.push('\u2022 ' + line);
+                    }
+                  }
+                }
+                
+                // Take only up to 5 key points to keep it manageable
+                bulletPoints = bulletPoints.slice(0, 5);
+                formattedAnswer = bulletPoints.join('\n');
+                
+                // Add a note if we shortened the answer significantly
+                if (lines.length > 6) {
+                  formattedAnswer += '\n\u2022 (Key points only, see guidelines for complete treatment)';
+                }
+              } else {
+                formattedAnswer = correctAnswer;
+              }
+              
+              const correctAnswerEl = document.createElement('div');
+              correctAnswerEl.className = 'result-correct-answer';
+              correctAnswerEl.style.whiteSpace = 'pre-line';
+              correctAnswerEl.textContent = formattedAnswer;
+              resultItem.appendChild(correctAnswerEl);
+            } else {
+              // For diagnoses, just show the full answer (it's usually short)
+              const correctAnswerEl = document.createElement('div');
+              correctAnswerEl.className = 'result-correct-answer';
+              correctAnswerEl.textContent = correctAnswer;
+              resultItem.appendChild(correctAnswerEl);
+            }
           }
         }
         

@@ -1,0 +1,24 @@
+Presenting Complaint:
+```
+Patient is a 22-year-old female presenting with recurrent fevers, chills, and profuse sweating for the past week, along with fatigue, headache, and nausea. She recently returned from a trip to sub-Saharan Africa where she engaged in outdoor activities and reported multiple mosquito bites.
+```
+
+
+Detailed Feedback:
+```
+What's your Diagnosis?
+Your answer:
+Malaria
+Perfect! Your diagnosis is correct.
+How would you treat it?
+
+Your answer:
+3-day course of artemether/lumefantrin 80/480 mg Paracetamol, oral, 1 g 8 hourly Haematic for blood supplementation Promethazine, oral, 1 tablet 12 hourly
+
+Your treatment plan differs from the recommended approach.
+
+Recommended treatment: According to the Standard Treatment Guidelines, 7th Edition, 2017, the exact treatment for malaria is as follows: - For uncomplicated malaria: - Artemether-lumefantrine is the recommended first-line treatment for adults and children. - The dosage for adults is four tablets of artemether-lumefantrine (20mg/120mg) as a single dose, then four tablets after 8 hours, and then four tablets twice daily for the next 2 days. - The dosage for children is based on weight and should be determined by the healthcare provider. - Alternative treatments for uncomplicated malaria include artesunate-amodiaquine and dihydroartemisinin-piperaquine. - For severe malaria: - Intravenous (IV) artesunate is the recommended first-line treatment for adults and children. - The dosage for adults is 2.4mg/kg at 0, 12, and 24 hours, and then once daily thereafter until the patient can tolerate oral medication. - The dosage for children is 3.0mg/kg at 0, 12, and 24 hours, and then once daily thereafter until the patient can tolerate oral medication. - If IV artesunate is not available, quinine or artemether can be used instead. Note: The guidelines do not contain specific information about the treatment of malaria during pregnancy or lactation. Healthcare providers should consult specialized guidelines for these populations.
+
+Correct answer:
+According to the Standard Treatment Guidelines, 7th Edition, 2017, the exact treatment for malaria is as follows: - For uncomplicated malaria: - Artemether-lumefantrine is the recommended first-line treatment for adults and children. - The dosage for adults is four tablets of artemether-lumefantrine (20mg/120mg) as a single dose, then four tablets after 8 hours, and then four tablets twice daily for the next 2 days. - The dosage for children is based on weight and should be determined by the healthcare provider. - Alternative treatments for uncomplicated malaria include artesunate-amodiaquine and dihydroartemisinin-piperaquine. - For severe malaria: - Intravenous (IV) artesunate is the recommended first-line treatment for adults and children. - The dosage for adults is 2.4mg/kg at 0, 12, and 24 hours, and then once daily thereafter until the patient can tolerate oral medication. - The dosage for children is 3.0mg/kg at 0, 12, and 24 hours, and then once daily thereafter until the patient can tolerate oral medication. - If IV artesunate is not available, quinine or artemether can be used instead. Note: The guidelines do not contain specific information about the treatment of malaria during pregnancy or lactation. Healthcare providers should consult specialized guidelines for these populations.
+```

@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import render_template, request, jsonify, session, redirect, url_for
@@ -358,27 +359,65 @@ def api_submit_simulation():
         diagnosis_score = 0
         diagnosis_feedback = ""
         
-        # Check if the key terms from the diagnosis appear in the user's answer
-        diagnosis_key_terms = correct_diagnosis.split()
-        matched_terms = 0
+        # Handle compound diagnoses or subtypes (e.g., "Uncomplicated Malaria")
+        # Extract main diagnosis and subtypes
+        main_diagnosis = ''
+        subtype = ''
         
-        for term in diagnosis_key_terms:
-            if term.lower() in user_diagnosis and len(term) > 3:  # Only count meaningful terms
-                matched_terms += 1
+        # Split the diagnosis to potentially identify subtype
+        diagnosis_parts = correct_diagnosis.split()
         
-        # Calculate score based on term matches
+        # Look for common subtype indicators like "uncomplicated", "severe", "chronic", etc.
+        subtype_indicators = ['uncomplicated', 'complicated', 'severe', 'mild', 'moderate', 'acute', 'chronic']
+        
+        # Try to identify main diagnosis and subtype
+        if len(diagnosis_parts) > 1:
+            # Check if the first word is a subtype indicator
+            if diagnosis_parts[0].lower() in subtype_indicators:
+                subtype = diagnosis_parts[0].lower()
+                main_diagnosis = ' '.join(diagnosis_parts[1:]).lower()
+            # Or if the last word is a subtype
+            elif diagnosis_parts[-1].lower() in subtype_indicators:
+                subtype = diagnosis_parts[-1].lower()
+                main_diagnosis = ' '.join(diagnosis_parts[:-1]).lower()
+            else:
+                # Just use the whole thing as main diagnosis
+                main_diagnosis = correct_diagnosis
+        else:
+            main_diagnosis = correct_diagnosis
+            
+        # Now we check if the user correctly identified both the main diagnosis and its subtype (if applicable)
         if correct_diagnosis in user_diagnosis:
             # Exact match gets full score
             diagnosis_score = 100
             diagnosis_feedback = "Perfect! Your diagnosis is correct."
-        elif matched_terms >= len(diagnosis_key_terms) // 2:
-            # Partial match gets partial score
-            diagnosis_score = 75
-            diagnosis_feedback = f"Your diagnosis is close, but not quite the exact condition. The correct diagnosis is: {current_case['diagnosis']}."
+        elif main_diagnosis in user_diagnosis:
+            if subtype and subtype not in user_diagnosis:
+                # Got main diagnosis but missed the subtype
+                diagnosis_score = 80
+                diagnosis_feedback = f"Your diagnosis identifies the correct condition, but doesn't specify the exact subtype. The correct diagnosis is: {current_case['diagnosis']}."
+            else:
+                # Just get main diagnosis
+                diagnosis_score = 90
+                diagnosis_feedback = f"Your diagnosis is very close to the correct one. The precise diagnosis is: {current_case['diagnosis']}."
         else:
-            # Few matches gets low score
-            diagnosis_score = 40
-            diagnosis_feedback = f"Your diagnosis is different from the correct one. The correct diagnosis is: {current_case['diagnosis']}."
+            # Check if key terms from main diagnosis are present
+            diagnosis_key_terms = main_diagnosis.split()
+            matched_terms = 0
+            
+            for term in diagnosis_key_terms:
+                if term.lower() in user_diagnosis and len(term) > 3:  # Only count meaningful terms
+                    matched_terms += 1
+            
+            # Calculate score based on term matches
+            if matched_terms >= len(diagnosis_key_terms) // 2:
+                # Partial match gets partial score
+                diagnosis_score = 60
+                diagnosis_feedback = f"Your diagnosis is close, but not quite the exact condition. The correct diagnosis is: {current_case['diagnosis']}."
+            else:
+                # Few matches gets low score
+                diagnosis_score = 40
+                diagnosis_feedback = f"Your diagnosis is different from the correct one. The correct diagnosis is: {current_case['diagnosis']}."
         
         # Evaluate treatment answer
         treatment_score = 0
@@ -388,19 +427,58 @@ def api_submit_simulation():
         user_treatment = answers['treatment'].lower()
         correct_treatment = current_case['treatment'].lower()
         
-        # Check for similarity in treatment
-        correct_treatment_lines = correct_treatment.split('\n')
+        # Ensure we're evaluating against the appropriate treatment for the specific diagnosis/subtype
+        # This is especially important for conditions with multiple subtypes
+        
+        # First, check if the treatment has sections for different subtypes
+        treatment_sections = {}
+        current_section = 'general'
+        treatment_sections[current_section] = []
+        
+        # Try to identify if the treatment has different sections for different subtypes
+        for line in correct_treatment.split('\n'):
+            line = line.strip().lower()
+            # Check if this line is a subtype header like "For uncomplicated malaria:" or similar
+            if line.startswith('for ') and (':' in line or '-' in line):
+                # Extract the subtype from the header
+                subtype_header = line.split(':')[0].split('-')[0].replace('for ', '').strip()
+                current_section = subtype_header
+                treatment_sections[current_section] = []
+            elif len(line) > 3:  # Avoid empty lines
+                treatment_sections[current_section].append(line)
+        
+        # Now we determine which section of the treatment to compare against based on the diagnosis
+        evaluation_section = 'general'
+        if subtype and subtype in treatment_sections:
+            # If we identified a subtype in the diagnosis, use that section
+            evaluation_section = subtype
+        elif 'general' not in treatment_sections and len(treatment_sections) == 1:
+            # If there's only one section and it's not 'general', use that
+            evaluation_section = list(treatment_sections.keys())[0]
+        elif main_diagnosis in treatment_sections:
+            # If the main diagnosis is a section, use that
+            evaluation_section = main_diagnosis
+            
+        # Extract key terms from the appropriate treatment section
+        treatment_key_terms = []
+        evaluation_text = '\n'.join(treatment_sections.get(evaluation_section, correct_treatment.split('\n')))
         
         # Extract key treatments (looking for medication names, dosages, etc.)
-        treatment_key_terms = []
-        for line in correct_treatment_lines:
+        for line in evaluation_text.split('\n'):
             # Look for medication names, dosages, etc.
-            if any(word in line.lower() for word in ["mg", "dose", "daily", "oral", "injection", "tablets"]):
+            if any(word in line.lower() for word in ["mg", "dose", "daily", "oral", "injection", "tablets", "capsule", "cream", "ointment"]):
                 treatment_key_terms.extend([term for term in line.split() if len(term) > 4])
+                
+        # Add specific medication names that might be shorter than 4 characters
+        common_meds = ['ace', 'arb', 'ppi', 'ssri', 'nsaid', 'hrt', 'otc']
+        for line in evaluation_text.split('\n'):
+            for med in common_meds:
+                if med in line.lower().split():
+                    treatment_key_terms.append(med)
         
         # If we couldn't find specific treatments, use the whole treatment text
         if not treatment_key_terms:
-            treatment_key_terms = correct_treatment.split()
+            treatment_key_terms = evaluation_text.split()
         
         # Count matched terms
         matched_treatment_terms = 0
@@ -408,16 +486,49 @@ def api_submit_simulation():
             if term.lower() in user_treatment and len(term) > 3:
                 matched_treatment_terms += 1
         
-        # Calculate treatment score
-        if matched_treatment_terms >= len(treatment_key_terms) // 2:
+        # Calculate treatment score 
+        # We need a more sophisticated approach for treatments with many terms
+        min_term_count = min(len(treatment_key_terms), 20)  # Cap at 20 terms to prevent overwhelming requirements
+        required_matches = max(min_term_count // 3, 2)  # At least 1/3 of terms (minimum 2) for a decent score
+        good_matches = max(min_term_count // 2, 3)  # At least 1/2 of terms (minimum 3) for a good score
+        
+        if matched_treatment_terms >= good_matches:
             treatment_score = 90
             treatment_feedback = "Your treatment plan is appropriate for this condition."
-        elif matched_treatment_terms > 0:
+        elif matched_treatment_terms >= required_matches:
             treatment_score = 60
             treatment_feedback = f"Your treatment plan has some correct elements, but is missing key components. Recommended treatment: {current_case['treatment']}"
         else:
             treatment_score = 30
-            treatment_feedback = f"Your treatment plan differs from the recommended approach. Recommended treatment: {current_case['treatment']}"
+            
+            # Format the treatment to be concise and readable, focusing on oral meds for pharmacy
+            treatment_text = current_case['treatment']
+            
+            # Check if we need to truncate/format (if > 150 chars)
+            if len(treatment_text) > 150:
+                # Add a summary line
+                treatment_feedback = f"Your treatment plan differs from the recommended approach. Recommended treatment includes: "
+                
+                # Filter out lines with IV/IM treatments
+                treatment_lines = []
+                for line in treatment_text.split('.'):
+                    line = line.strip()
+                    # Skip lines with IV/IM/injection content - not relevant for pharmacy
+                    if len(line) > 10 and not re.search(r'\b(IV|iv|intravenous|IM|im|intramuscular|injection|infusion|surgical|surgery|incision|drain|catheter|lumbar|puncture|biopsy)\b', line):
+                        treatment_lines.append(line)
+                
+                # Create a more readable format with limited content
+                if treatment_lines:
+                    # Take only 3-5 key bullet points (avoid overwhelming content)
+                    treatment_points = treatment_lines[:5]
+                    formatted_text = "\n• " + "\n• ".join(treatment_points)
+                    treatment_feedback += formatted_text
+                else:
+                    # Fallback if filtering removed everything
+                    treatment_feedback += treatment_text
+            else:
+                # Short treatment text can be included as is
+                treatment_feedback = f"Your treatment plan differs from the recommended approach. Recommended treatment: {treatment_text}"
         
         # Calculate overall score (weighted average)
         diagnosis_weight = 0.6  # 60% of total score

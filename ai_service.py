@@ -191,19 +191,26 @@ def create_medical_case_from_topic(topic, topic_info):
     # Generate the case via AI with specific instructions for the required format
     messages = [
         {"role": "system", "content": """You are a medical case generator for healthcare student training.
-        Create a realistic but concise medical case about the specified condition. 
-        Focus on the essential details needed for diagnosis and keep the case straightforward.
+        Create a realistic but concise medical case about the specified condition.
+        Follow these specific guidelines to create challenging but realistic cases:
+        
+        1. BE SPECIFIC: If the condition has subtypes (e.g., complicated vs. uncomplicated malaria), select ONE specific subtype and make it clear in the diagnosis field. Don't create cases that require treating multiple subtypes.
+        
+        2. REALISTIC SYMPTOM PRESENTATION: Include only 3-5 key symptoms/signs in the presenting complaint. Real patients rarely present with all textbook symptoms.
+        
+        3. AVOID DIAGNOSTIC GIVEAWAYS: Don't include obvious diagnostic clues (like mentioning mosquito bites for malaria). The clinician should diagnose based on symptoms and history, not explicit hints.
+        
         The format must follow this structure exactly:
         1. A short patient profile (age, gender, occupation if relevant)
-        2. Presenting complaint (chief symptoms reported by patient)
+        2. Presenting complaint (3-5 chief symptoms reported by patient, without obvious diagnostic clues)
         3. Patient history (relevant medical history, include only: blood pressure, blood sugar, allergies, current medications)
-        4. Diagnosis (the correct medical diagnosis)
-        5. Treatment (brief appropriate treatment plan)
+        4. Diagnosis (the SPECIFIC medical diagnosis including subtype if relevant)
+        5. Treatment (the appropriate treatment plan for ONLY the specific diagnosis/subtype, limited to oral medications, topical treatments, and lifestyle modifications that can be provided by a pharmacy - NO injections, IV treatments, or surgical procedures)
         6. Differential reasoning (why this diagnosis instead of the given alternative)
         
         Format the output as a JSON object with these exact keys: 
         patient_info, presenting_complaint, patient_history, diagnosis, treatment, differential_reasoning."""}, 
-        {"role": "user", "content": f"Create a case about {topic}. The differential diagnosis to discuss is {differential_diagnosis}. Use relevant medical information about {topic} symptoms, diagnosis and treatment. Keep it concise but medically accurate."}
+        {"role": "user", "content": f"Create a case about {topic}. The differential diagnosis to discuss is {differential_diagnosis}. Use relevant medical information about {topic} symptoms, diagnosis and treatment. For specific conditions like malaria, select and specify ONE subtype (e.g., 'Uncomplicated Malaria' or 'Severe Malaria') and only include treatment for that specific subtype. Keep it concise but medically accurate."}
     ]
     
     try:
