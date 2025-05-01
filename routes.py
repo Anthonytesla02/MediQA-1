@@ -374,11 +374,11 @@ def api_submit_simulation():
         elif matched_terms >= len(diagnosis_key_terms) // 2:
             # Partial match gets partial score
             diagnosis_score = 75
-            diagnosis_feedback = "Your diagnosis is close, but not quite the exact condition."
+            diagnosis_feedback = f"Your diagnosis is close, but not quite the exact condition. The correct diagnosis is: {current_case['diagnosis']}."
         else:
             # Few matches gets low score
             diagnosis_score = 40
-            diagnosis_feedback = "Your diagnosis is different from the correct one."
+            diagnosis_feedback = f"Your diagnosis is different from the correct one. The correct diagnosis is: {current_case['diagnosis']}."
         
         # Evaluate treatment answer
         treatment_score = 0
@@ -414,10 +414,10 @@ def api_submit_simulation():
             treatment_feedback = "Your treatment plan is appropriate for this condition."
         elif matched_treatment_terms > 0:
             treatment_score = 60
-            treatment_feedback = "Your treatment plan has some correct elements, but is missing key components."
+            treatment_feedback = f"Your treatment plan has some correct elements, but is missing key components. Recommended treatment: {current_case['treatment']}"
         else:
             treatment_score = 30
-            treatment_feedback = "Your treatment plan differs from the recommended approach."
+            treatment_feedback = f"Your treatment plan differs from the recommended approach. Recommended treatment: {current_case['treatment']}"
         
         # Calculate overall score (weighted average)
         diagnosis_weight = 0.6  # 60% of total score
@@ -441,13 +441,15 @@ def api_submit_simulation():
         # Save attempt if user is logged in
         if user_id:
             # Create or get case
-            case_title = current_case.get('presenting_complaint', 'Unknown Case')
+            presenting_complaint = current_case.get('presenting_complaint', 'Unknown Case')
+            # Create a shorter title (first 100 chars + ellipsis if needed)
+            case_title = presenting_complaint[:100] + ('...' if len(presenting_complaint) > 100 else '')
             case = Case.query.filter_by(title=case_title).first()
             
             if not case:
                 case = Case(
                     title=case_title,
-                    description=json.dumps({}),  # No patient info in new format
+                    description=json.dumps({'presenting_complaint': presenting_complaint}),  # Store full complaint
                     symptoms=json.dumps({}),  # No symptoms in new format
                     diagnosis=current_case.get('diagnosis', ''),
                     difficulty=2  # Medium difficulty by default

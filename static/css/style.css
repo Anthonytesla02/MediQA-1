@@ -1612,6 +1612,20 @@ a:hover {
   border-radius: var(--border-radius);
 }
 
+.correct-answer-title {
+  color: var(--success-color);
+  margin-top: 0.5rem;
+}
+
+.result-correct-answer {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background-color: rgba(46, 204, 113, 0.1);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  border-radius: var(--border-radius);
+  color: var(--success-color);
+}
+
 /* Progress indicator styles */
 .question-progress {
   text-align: center;

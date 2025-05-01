@@ -384,6 +384,37 @@ document.addEventListener('DOMContentLoaded', () => {
           resultItem.appendChild(feedbackElement);
         }
         
+        // Add correct answer display for incorrect answers
+        if (!question.correct && question.feedback) {
+          let correctAnswer = '';
+          
+          // Extract correct answer from feedback text
+          if (question.field === 'diagnosis') {
+            const match = question.feedback.match(/The correct diagnosis is: ([^.]+)/);
+            if (match && match[1]) {
+              correctAnswer = match[1];
+            }
+          } else if (question.field === 'treatment') {
+            const match = question.feedback.match(/Recommended treatment: ([\s\S]+)/);
+            if (match && match[1]) {
+              correctAnswer = match[1];
+            }
+          }
+          
+          // Only show if we extracted a correct answer
+          if (correctAnswer) {
+            const correctTitle = document.createElement('div');
+            correctTitle.className = 'result-subtitle correct-answer-title';
+            correctTitle.textContent = 'Correct answer:';
+            resultItem.appendChild(correctTitle);
+            
+            const correctAnswerEl = document.createElement('div');
+            correctAnswerEl.className = 'result-correct-answer';
+            correctAnswerEl.textContent = correctAnswer;
+            resultItem.appendChild(correctAnswerEl);
+          }
+        }
+        
         resultsContainer.appendChild(resultItem);
       });
     }

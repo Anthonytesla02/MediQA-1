@@ -44,7 +44,7 @@ class CaseAttempt(db.Model):
     completed = db.Column(db.Boolean, default=False)
     score = db.Column(db.Integer, default=0)
     duration = db.Column(db.Integer, default=0)  # in seconds
-    diagnosis = db.Column(db.String(120))
+    diagnosis = db.Column(db.Text)  # Changed from String(120) to Text for longer answers
     correct = db.Column(db.Boolean)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
