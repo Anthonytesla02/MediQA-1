@@ -42,9 +42,17 @@ def generate_ai_response(messages, temperature=0.7, max_tokens=1000):
         
         # Check for HTTP errors
         if response.status_code != 200:
-            logger.error(f"Mistral API error: Status {response.status_code}, Response: {response.text}")
-            # Return a fallback message instead of None to prevent upstream crashes
-            return "Error connecting to AI service. Please try again later."
+            error_message = "Error connecting to AI service. Please try again later."
+            
+            # Add specific handling for rate limiting errors
+            if response.status_code == 429:
+                logger.error(f"Mistral API rate limit exceeded: {response.text}")
+                error_message = "API rate limit exceeded. The system is currently handling too many requests. Please try again in a few minutes."
+            else:
+                logger.error(f"Mistral API error: Status {response.status_code}, Response: {response.text}")
+            
+            # Return a more specific fallback message
+            return error_message
         
         # Parse the response
         try:

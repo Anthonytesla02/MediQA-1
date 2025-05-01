@@ -425,7 +425,15 @@ def api_submit_simulation():
         
         # Convert to lowercase for case-insensitive matching
         user_treatment = answers['treatment'].lower()
-        correct_treatment = current_case['treatment'].lower()
+        
+        # Check if there was an error in the treatment info (rate limiting or API failure)
+        if "Error connecting to AI service" in current_case['treatment']:
+            # Handle the API error gracefully
+            treatment_score = 80  # Give a decent score to avoid frustrating users
+            correct_treatment = "Could not verify treatment due to API limitations. Common treatments for this condition typically include specific medications and management strategies appropriate for the severity and patient characteristics."
+            treatment_feedback = f"Your treatment plan cannot be fully evaluated due to API limits. {correct_treatment}"
+        else:
+            correct_treatment = current_case['treatment'].lower()
         
         # Ensure we're evaluating against the appropriate treatment for the specific diagnosis/subtype
         # This is especially important for conditions with multiple subtypes
@@ -463,72 +471,370 @@ def api_submit_simulation():
         treatment_key_terms = []
         evaluation_text = '\n'.join(treatment_sections.get(evaluation_section, correct_treatment.split('\n')))
         
-        # Extract key treatments (looking for medication names, dosages, etc.)
-        for line in evaluation_text.split('\n'):
-            # Look for medication names, dosages, etc.
-            if any(word in line.lower() for word in ["mg", "dose", "daily", "oral", "injection", "tablets", "capsule", "cream", "ointment"]):
-                treatment_key_terms.extend([term for term in line.split() if len(term) > 4])
+        # Parse the full treatment text into structured parts: treatments, and/or relationships
+        treatments = []
+        current_treatment = ""
+        
+        # Extract structured treatments with consideration for 'And'/'Or' relationships
+        treatment_blocks = []
+        current_block = []
+        
+        # First, detect if the text has 1st/2nd/3rd line treatment blocks
+        treatment_lines = [line.strip() for line in evaluation_text.split('\n') if line.strip()]
+        has_treatment_lines = any('line treatment' in line.lower() for line in treatment_lines)
+        
+        # If we have line treatments, process them differently
+        if has_treatment_lines:
+            current_line = None
+            for line in treatment_lines:
+                line_lower = line.lower()
                 
-        # Add specific medication names that might be shorter than 4 characters
-        common_meds = ['ace', 'arb', 'ppi', 'ssri', 'nsaid', 'hrt', 'otc']
-        for line in evaluation_text.split('\n'):
-            for med in common_meds:
-                if med in line.lower().split():
-                    treatment_key_terms.append(med)
-        
-        # If we couldn't find specific treatments, use the whole treatment text
-        if not treatment_key_terms:
-            treatment_key_terms = evaluation_text.split()
-        
-        # Count matched terms
-        matched_treatment_terms = 0
-        for term in treatment_key_terms:
-            if term.lower() in user_treatment and len(term) > 3:
-                matched_treatment_terms += 1
-        
-        # Calculate treatment score 
-        # We need a more sophisticated approach for treatments with many terms
-        min_term_count = min(len(treatment_key_terms), 20)  # Cap at 20 terms to prevent overwhelming requirements
-        required_matches = max(min_term_count // 3, 2)  # At least 1/3 of terms (minimum 2) for a decent score
-        good_matches = max(min_term_count // 2, 3)  # At least 1/2 of terms (minimum 3) for a good score
-        
-        if matched_treatment_terms >= good_matches:
-            treatment_score = 90
-            treatment_feedback = "Your treatment plan is appropriate for this condition."
-        elif matched_treatment_terms >= required_matches:
-            treatment_score = 60
-            treatment_feedback = f"Your treatment plan has some correct elements, but is missing key components. Recommended treatment: {current_case['treatment']}"
+                # Check if this is a new treatment line header
+                if any(pattern in line_lower for pattern in ['1st line', 'first line', '2nd line', 'second line', '3rd line', 'third line']):
+                    if current_line and current_block:
+                        treatment_blocks.append((current_line, current_block))
+                        current_block = []
+                    current_line = line
+                elif line.strip() and len(line) > 5:
+                    # This is content for the current treatment line
+                    if current_line:
+                        current_block.append(line)
+            
+            # Add the last block if it exists
+            if current_line and current_block:
+                treatment_blocks.append((current_line, current_block))
         else:
-            treatment_score = 30
+            # No line treatments, treat everything as one block
+            treatment_blocks.append(("Treatment", treatment_lines))
+        
+        # Now process each block to extract treatments and relationships
+        structured_treatments = []
+        
+        for block_name, block_lines in treatment_blocks:
+            # Process the block to find 'And'/'Or' relationships
+            or_groups = []
+            current_or_group = []
             
-            # Format the treatment to be concise and readable, focusing on oral meds for pharmacy
-            treatment_text = current_case['treatment']
-            
-            # Check if we need to truncate/format (if > 150 chars)
-            if len(treatment_text) > 150:
-                # Add a summary line
-                treatment_feedback = f"Your treatment plan differs from the recommended approach. Recommended treatment includes: "
+            for line in block_lines:
+                line = line.strip()
+                line_lower = line.lower()
                 
-                # Filter out lines with IV/IM treatments
-                treatment_lines = []
-                for line in treatment_text.split('.'):
-                    line = line.strip()
-                    # Skip lines with IV/IM/injection content - not relevant for pharmacy
-                    if len(line) > 10 and not re.search(r'\b(IV|iv|intravenous|IM|im|intramuscular|injection|infusion|surgical|surgery|incision|drain|catheter|lumbar|puncture|biopsy)\b', line):
-                        treatment_lines.append(line)
+                # Skip empty lines or headers
+                if not line or line.lower() in ['or', 'and']:
+                    continue
                 
-                # Create a more readable format with limited content
-                if treatment_lines:
-                    # Take only 3-5 key bullet points (avoid overwhelming content)
-                    treatment_points = treatment_lines[:5]
-                    formatted_text = "\n• " + "\n• ".join(treatment_points)
-                    treatment_feedback += formatted_text
+                # Check if this is a new 'or' treatment option
+                if line_lower.startswith('or ') or (len(or_groups) > 0 and current_or_group and 'or' in line_lower.split()[:2]):
+                    # Clean up the 'or' prefix if present
+                    if line_lower.startswith('or '):
+                        line = line[3:].strip()
+                    
+                    # Start a new 'or' group if needed
+                    if not current_or_group:
+                        current_or_group.append(line)
+                    else:
+                        # If we have an existing group, save it and start a new one
+                        or_groups.append(current_or_group)
+                        current_or_group = [line]
+                elif 'and' in line_lower.split()[:2] and current_or_group:
+                    # This is an 'and' addition to the current treatment
+                    # Clean up the 'and' prefix if present
+                    if line_lower.startswith('and '):
+                        line = line[4:].strip()
+                    
+                    current_or_group.append(("AND", line))
                 else:
-                    # Fallback if filtering removed everything
-                    treatment_feedback += treatment_text
+                    # Regular line, add to current group
+                    if not current_or_group:
+                        current_or_group = [line]
+                    else:
+                        # Check if it's a continuation of previous line
+                        if any(c.isalpha() for c in line) and line[0].islower():
+                            # It's a continuation, append to the last item
+                            if isinstance(current_or_group[-1], tuple):
+                                # Append to the AND item
+                                and_marker, and_text = current_or_group[-1]
+                                current_or_group[-1] = (and_marker, and_text + ' ' + line)
+                            else:
+                                # Append to the regular item
+                                current_or_group[-1] += ' ' + line
+                        else:
+                            # New item in the group
+                            current_or_group.append(line)
+            
+            # Add the last group if it exists
+            if current_or_group:
+                or_groups.append(current_or_group)
+            
+            structured_treatments.append((block_name, or_groups))
+        
+        # Check if the user's treatment answer matches any of the structured treatments
+        user_treatment_lower = user_treatment.lower()
+        
+        # Extract medication names and key details from the user's answer
+        user_meds = set()
+        user_treatment_phrases = user_treatment_lower.split('\n')
+        
+        for phrase in user_treatment_phrases:
+            # Split phrases at commas, periods, or semicolons
+            parts = re.split(r'[,;.] |[,;.]', phrase)
+            
+            for part in parts:
+                part = part.strip()
+                if not part:
+                    continue
+                
+                # Check if this is a medication with dosage info
+                if any(term in part for term in ['mg', 'ml', 'units', 'oral', 'topical', 'daily', 'hourly', 'weekly', 'tabs', 'tablets', 'capsule', 'cream', 'ointment']):
+                    user_meds.add(part)
+                
+                # Also look for medication names without dosage (at least 3 chars, not common words)
+                words = part.split()
+                for word in words:
+                    if len(word) >= 3 and not word in ['the', 'and', 'for', 'with', 'this', 'that', 'dose', 'take', 'then', 'hours', 'days', 'weeks']:
+                        med_candidates = [word]
+                        # Also check for 2-word medication names
+                        for i, w in enumerate(words):
+                            if w == word and i < len(words) - 1:
+                                med_candidates.append(word + ' ' + words[i+1])
+                        
+                        for med in med_candidates:
+                            # Only add if it might be a medication (not a common word)
+                            if not med.lower() in ['treatment', 'therapy', 'patient', 'adult', 'child', 'children', 'should', 'could']:
+                                user_meds.add(med)
+        
+        # Function to check if a medication/treatment is present in the user's answer
+        def treatment_match(treatment_text, user_meds):
+            # Normalize the treatment text (remove punctuation, lowercase)
+            treatment_lower = treatment_text.lower()
+            
+            # Handle dosage ranges in treatment (e.g., "500 mg - 1 g" or "6-8 hourly")
+            treatment_lower = re.sub(r'(\d+)\s*-\s*(\d+)\s*([a-zA-Z]+)', r'\1\3 or \2\3', treatment_lower)
+            treatment_lower = re.sub(r'(\d+)\s*-\s*(\d+)', r'\1 or \2', treatment_lower)
+            
+            # Extract key components (medication name, dosage, frequency, duration)
+            key_parts = [part.strip() for part in re.split(r'[,;.]', treatment_lower) if part.strip()]
+            
+            # Extract medication name (usually the first part before a comma)
+            med_name = key_parts[0] if key_parts else ""
+            
+            # Flag to track if the medication name was matched
+            med_name_matched = False
+            
+            # Check if the medication name is in user's answer
+            for user_med in user_meds:
+                if med_name and med_name in user_med:
+                    med_name_matched = True
+                    break
+                
+                # Also check if any word in med_name is in user_med (for partial matches)
+                med_words = [w for w in med_name.split() if len(w) > 3 and not w in ['oral', 'therapy', 'treatment', 'apply', 'dose']]
+                for word in med_words:
+                    if word in user_med:
+                        med_name_matched = True
+                        break
+                
+                if med_name_matched:
+                    break
+            
+            # If main medication is included, that's often sufficient
+            return med_name_matched
+        
+        # Calculate score based on the structured treatments
+        treatment_score = 0
+        treatment_matches = []
+        
+        # Track if any treatment line is matched
+        any_line_matched = False
+        
+        for block_name, or_groups in structured_treatments:
+            # For each treatment line (1st, 2nd, 3rd, or just "Treatment")
+            block_match = False
+            
+            for or_group in or_groups:
+                # Check if any OR option within this group matches
+                or_match = False
+                matching_treatment = None
+                
+                # Track AND items that need to be matched within this OR group
+                and_items = [item for item in or_group if isinstance(item, tuple) and item[0] == "AND"]
+                regular_items = [item for item in or_group if not isinstance(item, tuple)]
+                
+                # Check if any regular item matches
+                for item in regular_items:
+                    if treatment_match(item, user_meds):
+                        or_match = True
+                        matching_treatment = item
+                        break
+                
+                # If a regular treatment matched, also check AND items
+                if or_match and and_items:
+                    # All AND items must match
+                    all_and_matched = True
+                    for _, and_item in and_items:
+                        if not treatment_match(and_item, user_meds):
+                            all_and_matched = False
+                            break
+                    
+                    # Update the match status based on AND requirements
+                    or_match = all_and_matched
+                
+                # If any OR group matched completely (including AND requirements)
+                if or_match:
+                    block_match = True
+                    if matching_treatment:
+                        treatment_matches.append(matching_treatment)
+                    break
+            
+            # If any treatment in this block matched
+            if block_match:
+                any_line_matched = True
+                # First line treatments get highest score, but any match is considered good
+                if '1st' in block_name or 'first' in block_name.lower():
+                    treatment_score = 100
+                else:
+                    treatment_score = max(treatment_score, 90)  # At least 90 for matching any treatment line
+        
+        # Set score and feedback based on matches
+        if any_line_matched:
+            treatment_score = max(treatment_score, 90)
+            treatment_feedback = "Your treatment plan is appropriate for this condition."
+        else:
+            # Check if there are partial matches by comparing key terms
+            treatment_key_terms = []
+            
+            # Extract terms from all treatment blocks
+            for block_name, or_groups in structured_treatments:
+                for or_group in or_groups:
+                    for item in or_group:
+                        if isinstance(item, tuple):
+                            _, text = item
+                        else:
+                            text = item
+                        
+                        # Look for medication names, dosages, etc.
+                        if any(word in text.lower() for word in ["mg", "dose", "daily", "oral", "injection", "tablets", "capsule", "cream", "ointment"]):
+                            treatment_key_terms.extend([term for term in text.split() if len(term) > 4])
+            
+            # Add specific medication names that might be shorter than 4 characters
+            common_meds = ['ace', 'arb', 'ppi', 'ssri', 'nsaid', 'hrt', 'otc']
+            for block_name, or_groups in structured_treatments:
+                for or_group in or_groups:
+                    for item in or_group:
+                        if isinstance(item, tuple):
+                            _, text = item
+                        else:
+                            text = item
+                            
+                        for med in common_meds:
+                            if med in text.lower().split():
+                                treatment_key_terms.append(med)
+            
+            # If we couldn't find specific treatments, use all words
+            if not treatment_key_terms:
+                for block_name, or_groups in structured_treatments:
+                    for or_group in or_groups:
+                        for item in or_group:
+                            if isinstance(item, tuple):
+                                _, text = item
+                            else:
+                                text = item
+                            treatment_key_terms.extend(text.split())
+            
+            # Count matched terms
+            matched_treatment_terms = 0
+            for term in treatment_key_terms:
+                if term.lower() in user_treatment_lower and len(term) > 3:
+                    matched_treatment_terms += 1
+            
+            # Calculate treatment score based on partial matches
+            min_term_count = min(len(treatment_key_terms), 20)  # Cap at 20 terms to prevent overwhelming requirements
+            required_matches = max(min_term_count // 3, 2)  # At least 1/3 of terms (minimum 2) for a decent score
+            good_matches = max(min_term_count // 2, 3)  # At least 1/2 of terms (minimum 3) for a good score
+            
+            if matched_treatment_terms >= good_matches:
+                treatment_score = 70
+                treatment_feedback = "Your treatment plan has most of the correct elements for this condition."
+            elif matched_treatment_terms >= required_matches:
+                treatment_score = 50
+                treatment_feedback = "Your treatment plan has some correct elements, but is missing key components."
             else:
-                # Short treatment text can be included as is
-                treatment_feedback = f"Your treatment plan differs from the recommended approach. Recommended treatment: {treatment_text}"
+                treatment_score = 30
+            
+            # Format the correct treatment answer in a clean, concise way
+            treatment_feedback = "Your treatment plan differs from the recommended approach.\nCorrect answer:"
+            
+            # Check if we have matched treatments to display
+            if treatment_matches:
+                # Format the matched treatments cleanly
+                formatted_treatments = []
+                
+                # First, collect all matched treatments
+                for treatment in treatment_matches:
+                    # Clean up the treatment text - remove excessive whitespace
+                    clean_treatment = re.sub(r'\s+', ' ', treatment).strip()
+                    
+                    # Add to our formatted list if not already included
+                    if clean_treatment not in formatted_treatments:
+                        formatted_treatments.append(clean_treatment)
+                
+                # If nothing was found, show the first appropriate treatment from the structured blocks
+                if not formatted_treatments:
+                    for block_name, or_groups in structured_treatments:
+                        if '1st' in block_name or 'first' in block_name.lower() or 'Treatment' == block_name:
+                            # Prefer first line treatments or general treatment
+                            if or_groups and or_groups[0]:
+                                # Get the first treatment option
+                                first_treatment = or_groups[0][0]
+                                if isinstance(first_treatment, tuple):
+                                    first_treatment = first_treatment[1]  # Get text from tuple
+                                
+                                # Clean and add to formatted list
+                                clean_treatment = re.sub(r'\s+', ' ', first_treatment).strip()
+                                formatted_treatments.append(clean_treatment)
+                                break
+                
+                # Filter out any IV/IM treatments - not relevant for pharmacy
+                filtered_treatments = []
+                for treatment in formatted_treatments:
+                    # Skip treatments with IV/IM/injection content
+                    if not re.search(r'\b(IV|iv|intravenous|IM|im|intramuscular|injection|infusion|surgical|surgery|incision|drain|catheter|lumbar|puncture|biopsy)\b', treatment):
+                        filtered_treatments.append(treatment)
+                
+                # If filtering removed everything, fall back to the original list
+                if not filtered_treatments and formatted_treatments:
+                    filtered_treatments = formatted_treatments
+                
+                # Format the feedback with bullet points
+                if filtered_treatments:
+                    treatment_feedback += "\n• " + "\n• ".join(filtered_treatments[:5])  # Limit to 5 key treatments
+                else:
+                    # Use the original treatment as last resort
+                    treatment_text = current_case['treatment']
+                    treatment_lines = [line.strip() for line in treatment_text.split('.') if len(line.strip()) > 10]
+                    # Take only a few lines to keep it concise
+                    formatted_text = ".\n• ".join(treatment_lines[:5]) + "."
+                    treatment_feedback += "\n" + formatted_text
+            else:
+                # No matches found, use the original treatment text as a fallback
+                treatment_text = current_case['treatment']
+                # Clean up the text and format with bullet points
+                clean_lines = []
+                
+                # Split by periods and newlines to get separate statements
+                for line in re.split(r'\.|\n', treatment_text):
+                    line = line.strip()
+                    if len(line) > 10:
+                        # Skip lines with IV/IM content
+                        if not re.search(r'\b(IV|iv|intravenous|IM|im|intramuscular|injection|infusion|surgical|surgery|incision|drain|catheter|lumbar|puncture|biopsy)\b', line):
+                            clean_lines.append(line)
+                
+                # Format with bullet points, limit to 5 key treatments
+                if clean_lines:
+                    treatment_feedback += "\n• " + "\n• ".join(clean_lines[:5])
+                else:
+                    # Last resort - just show the original treatment
+                    treatment_feedback += "\n" + treatment_text
         
         # Calculate overall score (weighted average)
         diagnosis_weight = 0.6  # 60% of total score
@@ -569,28 +875,42 @@ def api_submit_simulation():
                 db.session.flush()  # To get the ID
             
             # Save attempt with answers
-            attempt = CaseAttempt(
-                user_id=user_id,
-                case_id=case.id,
-                completed=True,
-                score=overall_score,
-                diagnosis=json.dumps(answers),
-                correct=overall_score >= 70
-            )
-            db.session.add(attempt)
+            try:
+                # Convert answers to a more concise format to avoid varchar limits
+                answers_truncated = {}
+                for key, value in answers.items():
+                    # Limit each answer to 100 characters to fit column size
+                    answers_truncated[key] = value[:100] + '...' if len(value) > 100 else value
+                
+                attempt = CaseAttempt(
+                    user_id=user_id,
+                    case_id=case.id,
+                    completed=True,
+                    score=overall_score,
+                    diagnosis=json.dumps(answers_truncated),
+                    correct=overall_score >= 70
+                )
+                db.session.add(attempt)
+            except Exception as e:
+                logger.error(f"Error adding attempt: {e}")
+                # Continue even if saving the attempt fails
             
             # Add points based on score
-            if overall_score >= 90:
-                # Excellent score
-                points = 100
-            elif overall_score >= 70:
-                # Good score
-                points = 50
-            else:
-                # Partial credit
-                points = 20
-            
-            add_points(user_id, points)
+            try:
+                if overall_score >= 90:
+                    # Excellent score
+                    points = 100
+                elif overall_score >= 70:
+                    # Good score
+                    points = 50
+                else:
+                    # Partial credit
+                    points = 20
+                
+                add_points(user_id, points)
+            except Exception as e:
+                logger.error(f"Error adding points: {e}")
+                # Continue even if adding points fails
             
             # Award achievement for first case
             if CaseAttempt.query.filter_by(user_id=user_id).count() == 1:

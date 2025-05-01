@@ -1,0 +1,83 @@
+When it comes to the treatment of illnesses, some of them come with multiple forms of treatment. 
+
+
+1. Treatments with "Or" statement.
+This means that, providing only treatment A Or treatment B is accurate. That's because they may perform the same function.
+
+A. If the treatment is in the example  format (Example 1) below, submitting only one as the answer should be correct. 
+Example 1:
+```
+Miconazole 1%, topical, apply twice daily
+Or
+Clotrimazole 1%, topical, apply twice daily 
+```
+
+
+2. Treatments with "And" statement.
+
+B. If the treatment is in the example  format (Example 2) below, the user has to provide both, even if it's mixed up or in theory own words.
+Example 2:
+```
+Miconazole 1%, topical, apply twice daily
+And
+Griseofulvin, oral, 500 mg daily for 4 weeks
+```
+In Example 2, the treatment requires both drugs to work so if the user provides only one, it's wrong.
+
+
+3. Treatment with multiple statements.
+Some illnesses can be treated with a lot of different drugs. Some of the drugs works best and highly prioritized. They fall 1st Line treatments. Those less prioritized fall under 2nd and 3rd Line treatments. These means that if the user has all the drugs in all 3 Lines of treatment in the pharmacy, they are supposed to give the 1st Line drugs. If they don't have the 1st Line drugs, they can then use the 2nd line drugs; and the process continues.
+But when it comes to the treatment submission, if the user one or more treatments under either one or all the Line of treatment, it should be correct.
+Example 3:
+```
+1st Line Treatment
+aa. Amoxicillin (Amoxycillin), oral,
+Adults
+1 g 8 hourly for 7 days
+
+And
+
+bb. Azithromycin, oral,
+Adult
+500 mg daily for 6 days
+
+Or
+
+cc. Erythromycin, oral, (if patient is allergic to penicillin)
+Adult
+500 mg 6 hourly for 7 days
+
+
+2nd Line Treatment
+dd. Cefuroxime, oral,
+Adults
+500 mg 12 hourly for 7 days
+
+Or
+
+ee. Doxycycline, oral,
+Adults
+100 mg 12 hourly for 7-14 days
+```
+The above example means that user can combine aa. or dd. or ee. , each along bb. Or cc. These alphabets are used in place of the actual drugs for simplicity.
+
+
+
+4. Treatment dosages with hyphen(-).
+Some treatment dosages do not specify the exact amount of a drug to give, duration to take a drug or the frequency. So most of the values are separated by hyphens. Here are 3 examples.
+Example 4:
+```
+Erythromycin, oral, 250-500 mg 6 hourly for 7 days
+Or
+Paracetamol, oral, 500 mg - 1 g 6-8 hourly for 7 days 
+Or
+Paracetamol, oral, 500 mg - 1 g 6 - 8 hourly for 5 - 7 days 
+```
+If the user provides only one figure (example: 500 mg instead of 500 mg - 1 g or 5 days instead of 5-7 days etc ), it should be correct. This should automatically apply to all adult related treatments or dosages.
+
+
+Note that, the user might not provide their answer in the exact format as on the knowledge base but rather provide it in their own words. As such, commas, hyphens may be omitted. Some drugs might come before others, more like shuffled. 
+
+
+
+Now let's talk about the layout and design. If the answers are submitted, the correct answer should be the one displayed directly below the that input field. It shouldn't be elaborated. It should be straightforward just like how it was retrieved from the knowledge base but format it. It should just list the correct answer. Remove the excess fields after that.
