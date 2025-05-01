@@ -26,3 +26,5 @@ python-docx==1.1.2
 requests==2.32.3
 sqlalchemy==2.0.28
 werkzeug==3.0.1
+flask-login
+flask-wtf

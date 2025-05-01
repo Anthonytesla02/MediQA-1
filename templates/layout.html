@@ -100,39 +100,53 @@
     
     <!-- Initialize components -->
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('Layout: DOM content loaded');
+        // Wait for all scripts to be fully loaded
+        window.addEventListener('load', () => {
+            console.log('Layout: Window fully loaded');
             // Initialize Feather icons
             feather.replace();
             
-            // Initialize components
-            initComponents();
+            // Initialize components if available
+            if (typeof initComponents === 'function') {
+                initComponents();
+            }
             
-            // Initialize auth modal with the new auth module
+            // Initialize auth modal with the auth module
             if (window.authModule) {
                 window.authModule.initAuthModal();
+                
+                // Show tabs only when logged in
+                const isLoggedIn = window.authModule.isLoggedIn();
+                const navTabs = document.getElementById('nav-tabs');
+                if (navTabs) {
+                    navTabs.style.display = isLoggedIn ? 'flex' : 'none';
+                }
+                
+                // Check if user is already logged in on page load
+                if (isLoggedIn) {
+                    // Validate session with server
+                    window.authModule.validateSession().then(isValid => {
+                        if (isValid) {
+                            console.log('User session is valid');
+                            if (typeof initUserSession === 'function') {
+                                initUserSession();
+                            }
+                        } else {
+                            console.log('User session is invalid or expired');
+                        }
+                    });
+                }
             } else {
-                console.error('Auth module not found!');
+                console.warn('Auth module not found or not yet loaded');
             }
-            
-            // Show tabs only when logged in
-            const isLoggedIn = window.authModule && window.authModule.isLoggedIn();
-            const navTabs = document.getElementById('nav-tabs');
-            if (navTabs) {
-                navTabs.style.display = isLoggedIn ? 'flex' : 'none';
-            }
-            
-            // Check if user is already logged in on page load
-            if (isLoggedIn) {
-                // Validate session with server
-                window.authModule.validateSession().then(isValid => {
-                    if (isValid) {
-                        console.log('User session is valid');
-                        initUserSession();
-                    } else {
-                        console.log('User session is invalid or expired');
-                    }
-                });
+        });
+
+        // Also keep the DOMContentLoaded handler for early initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Layout: DOM content loaded');
+            // Initialize Feather icons early
+            if (typeof feather !== 'undefined') {
+                feather.replace();
             }
         });
     </script>
