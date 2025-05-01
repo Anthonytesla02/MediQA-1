@@ -103,6 +103,26 @@ def get_diagnosis_response(user_query):
     is_treatment_query = any(phrase in query_lower for phrase in treatment_phrases)
     is_diagnosis_query = any(phrase in query_lower for phrase in diagnosis_phrases)
     
+    # Add special handling for potentially confused conditions
+    contains_large_chronic_ulcers = 'large chronic ulcers' in query_lower or 'chronic skin ulcers' in query_lower
+    contains_peptic_ulcer = 'peptic ulcer' in query_lower
+    
+    # Check for potential confusion between similar conditions
+    requires_disambiguation = False
+    
+    # If both conditions are mentioned, no need for disambiguation as the query likely already specifies
+    if not (contains_large_chronic_ulcers and contains_peptic_ulcer):
+        # Check for "ulcer" by itself which might cause confusion
+        if 'ulcer' in query_lower:
+            if contains_large_chronic_ulcers:
+                # Explicitly note this is about skin ulcers
+                user_query = user_query.replace("Large Chronic Ulcers", "Large Chronic Skin Ulcers (a dermatological condition)") 
+                requires_disambiguation = True
+            elif contains_peptic_ulcer:
+                # Explicitly note this is about gastrointestinal ulcers
+                user_query = user_query.replace("Peptic Ulcer Disease", "Peptic Ulcer Disease (a gastrointestinal condition)")
+                requires_disambiguation = True
+    
     # Base system prompt - then customize based on query type
     system_content = f"""You are a precise medical assistant that references the Standard Treatment Guidelines.
     Base your responses ONLY on the following medical reference information:
@@ -127,6 +147,20 @@ def get_diagnosis_response(user_query):
         - Include only treatment information, not general disease background
         - Format as a brief, structured treatment plan
         """
+        
+        # Add special instructions for specific conditions that might be confused
+        if contains_large_chronic_ulcers:
+            system_content += """
+            IMPORTANT: The query is about LARGE CHRONIC SKIN ULCERS, which is a dermatological condition affecting the skin.
+            DO NOT provide treatment for peptic ulcer disease (a gastrointestinal condition).
+            Focus only on topical treatments, wound care, antibiotics for skin infections, etc. for chronic skin ulcers.
+            """
+        elif contains_peptic_ulcer:
+            system_content += """
+            IMPORTANT: The query is about PEPTIC ULCER DISEASE, which is a gastrointestinal condition affecting the stomach/duodenum.
+            DO NOT provide treatment for skin ulcers or wounds.
+            Focus only on acid-suppressing medications (e.g., proton pump inhibitors), H. pylori eradication if relevant, etc.
+            """
     
     # Add specific instructions for diagnosis queries
     elif is_diagnosis_query:
@@ -138,6 +172,20 @@ def get_diagnosis_response(user_query):
         - Focus on identification criteria only, not treatment options
         - Keep explanations minimal and fact-based
         """
+        
+        # Add special instructions for specific conditions that might be confused
+        if contains_large_chronic_ulcers:
+            system_content += """
+            IMPORTANT: The query is about LARGE CHRONIC SKIN ULCERS, which is a dermatological condition affecting the skin.
+            DO NOT provide information about peptic ulcer disease (a gastrointestinal condition).
+            Focus only on criteria for diagnosing chronic skin wounds and ulcers affecting the skin's surface.
+            """
+        elif contains_peptic_ulcer:
+            system_content += """
+            IMPORTANT: The query is about PEPTIC ULCER DISEASE, which is a gastrointestinal condition affecting the stomach/duodenum.
+            DO NOT provide information about skin ulcers or wounds.
+            Focus only on diagnosing ulcers in the digestive tract, particularly in the stomach and/or duodenum.
+            """
     
     # Create messages for AI with context and query-specific guidance
     messages = [

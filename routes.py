@@ -199,8 +199,20 @@ def api_new_simulation():
         }
         
         try:
-            # Extract treatment information - handle potential API failures
-            treatment_info = get_diagnosis_response(f"What is the exact treatment for {selected_topic}?")
+            # Add special handling to prevent confusion between commonly confused conditions
+            # For example, ensure "Large Chronic Ulcers" doesn't get confused with "Peptic Ulcer Disease"
+            clarified_query = selected_topic
+            
+            # Handle potential confusion between conditions with similar names
+            if selected_topic == "Large Chronic Ulcers":
+                clarified_query = "Large Chronic Skin Ulcers (NOT peptic ulcer disease)"
+            elif selected_topic == "Peptic Ulcer Disease":
+                clarified_query = "Peptic Ulcer Disease (gastrointestinal condition, NOT skin ulcers)"
+            elif "ulcer" in selected_topic.lower():
+                clarified_query = f"{selected_topic} (be specific about the exact condition)"
+            
+            # Extract treatment information with the clarified query
+            treatment_info = get_diagnosis_response(f"What is the exact treatment for {clarified_query}?")
             logger.info(f"Got treatment info (length: {len(treatment_info) if treatment_info else 0})")
             
             # If we got a treatment response, use it; otherwise use a fallback
@@ -210,6 +222,14 @@ def api_new_simulation():
                 # Fallback treatment (generic - doesn't reveal diagnosis)
                 case_data['treatment'] = "Treatment typically includes appropriate medications, lifestyle modifications, and regular monitoring by healthcare professionals."
                 logger.warning(f"Using fallback treatment for {selected_topic}")
+                
+            # For Large Chronic Ulcers specifically, add a verification check
+            if selected_topic == "Large Chronic Ulcers" and "proton pump inhibitor" in treatment_info.lower():
+                # This indicates confusion with peptic ulcer treatment - get a fixed response
+                logger.warning("Detected potential confusion with peptic ulcer treatment - regenerating")
+                treatment_info = get_diagnosis_response("What is the exact treatment for large chronic skin ulcers (NOT gastrointestinal ulcers)?")
+                if treatment_info and len(treatment_info) > 10:
+                    case_data['treatment'] = treatment_info
         except Exception as e:
             logger.error(f"Error getting treatment info: {e}")
             # Fallback treatment (generic - doesn't reveal diagnosis)
@@ -228,8 +248,23 @@ def api_new_simulation():
             differential_topic = choice(alternative_diagnoses[:10] if len(alternative_diagnoses) > 10 else alternative_diagnoses)
             logger.info(f"Selected differential topic: {differential_topic}")
             
-            # Get differential reasoning information
-            differential_info = get_diagnosis_response(f"How do you differentiate {selected_topic} from {differential_topic}?")
+            # Handle potential confusion in differential diagnosis requests
+            clarified_topic = selected_topic
+            clarified_differential = differential_topic
+            
+            # Handle potential confusion between conditions with similar names
+            if selected_topic == "Large Chronic Ulcers":
+                clarified_topic = "Large Chronic Skin Ulcers (a dermatological condition)"
+            elif selected_topic == "Peptic Ulcer Disease":
+                clarified_topic = "Peptic Ulcer Disease (a gastrointestinal condition)"
+            
+            if differential_topic == "Large Chronic Ulcers":
+                clarified_differential = "Large Chronic Skin Ulcers (a dermatological condition)"
+            elif differential_topic == "Peptic Ulcer Disease":
+                clarified_differential = "Peptic Ulcer Disease (a gastrointestinal condition)"
+            
+            # Get differential reasoning information with clarified topics
+            differential_info = get_diagnosis_response(f"How do you differentiate {clarified_topic} from {clarified_differential}?")
             logger.info(f"Got differential info (length: {len(differential_info) if differential_info else 0})")
             
             # If we got a differential response, use it; otherwise use a fallback
@@ -322,7 +357,25 @@ def api_submit_simulation():
                 # Use a generic treatment description that doesn't reveal the diagnosis
                 from ai_service import get_diagnosis_response
                 try:
-                    treatment_info = get_diagnosis_response(f"What is the exact treatment for {diagnosis}?")
+                    # Add special handling to prevent confusion between commonly confused conditions
+                    clarified_query = diagnosis
+                    
+                    # Handle potential confusion between conditions with similar names
+                    if diagnosis == "Large Chronic Ulcers":
+                        clarified_query = "Large Chronic Skin Ulcers (NOT peptic ulcer disease)"
+                    elif diagnosis == "Peptic Ulcer Disease":
+                        clarified_query = "Peptic Ulcer Disease (gastrointestinal condition, NOT skin ulcers)"
+                    elif "ulcer" in diagnosis.lower():
+                        clarified_query = f"{diagnosis} (be specific about the exact condition)"
+                    
+                    treatment_info = get_diagnosis_response(f"What is the exact treatment for {clarified_query}?")
+                    
+                    # For Large Chronic Ulcers specifically, add a verification check
+                    if diagnosis == "Large Chronic Ulcers" and treatment_info and "proton pump inhibitor" in treatment_info.lower():
+                        # This indicates confusion with peptic ulcer treatment - get a fixed response
+                        logger.warning("Detected potential confusion with peptic ulcer treatment - regenerating")
+                        treatment_info = get_diagnosis_response("What is the exact treatment for large chronic skin ulcers (NOT gastrointestinal ulcers)?")
+                    
                     if not treatment_info or len(treatment_info) < 10:
                         treatment_info = "Treatment typically includes appropriate medications and lifestyle modifications based on clinical presentation."
                 except Exception:
@@ -433,6 +486,21 @@ def api_submit_simulation():
             correct_treatment = "Could not verify treatment due to API limitations. Common treatments for this condition typically include specific medications and management strategies appropriate for the severity and patient characteristics."
             treatment_feedback = f"Your treatment plan cannot be fully evaluated due to API limits. {correct_treatment}"
         else:
+            # Check for and fix incorrect treatment information
+            # For example, if Large Chronic Ulcers has peptic ulcer treatment content
+            if current_case['diagnosis'] == "Large Chronic Ulcers" and "proton pump inhibitor" in current_case['treatment'].lower():
+                # This indicates incorrect treatment - fix it before evaluation
+                logger.warning("Found incorrect treatment for Large Chronic Ulcers (showing peptic ulcer treatment) - regenerating")
+                from ai_service import get_diagnosis_response
+                try:
+                    corrected_treatment = get_diagnosis_response("What is the exact treatment for large chronic skin ulcers (dermatological condition, NOT peptic ulcer disease)?")
+                    if corrected_treatment and len(corrected_treatment) > 10:
+                        current_case['treatment'] = corrected_treatment
+                        # Update session with corrected case
+                        session['current_case'] = current_case
+                except Exception as e:
+                    logger.error(f"Failed to regenerate treatment for Large Chronic Ulcers: {e}")
+            
             correct_treatment = current_case['treatment'].lower()
         
         # Ensure we're evaluating against the appropriate treatment for the specific diagnosis/subtype
